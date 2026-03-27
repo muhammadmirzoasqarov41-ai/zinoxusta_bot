@@ -6,6 +6,7 @@ class Onboarding(StatesGroup):
     phone = State()
     email = State()
     region = State()
+    role = State()
     purpose = State()
 
 

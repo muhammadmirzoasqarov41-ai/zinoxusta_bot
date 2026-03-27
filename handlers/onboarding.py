@@ -3,9 +3,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from db import Database
-from keyboards import contact_kb, main_menu_kb
+from keyboards import contact_kb, main_menu_kb, role_select_kb
 from states import Onboarding
-from utils import detect_role, friendly
+from utils import friendly
 
 router = Router()
 
@@ -62,6 +62,27 @@ async def onboarding_region(message: Message, state: FSMContext):
         return
     await state.update_data(region=region)
     await message.answer(
+        friendly("Iltimos, o'zingizni tanlang: usta yoki mijoz?"),
+        reply_markup=role_select_kb(),
+    )
+    await state.set_state(Onboarding.role)
+
+
+@router.message(Onboarding.role)
+async def onboarding_role(message: Message, state: FSMContext):
+    text = (message.text or "").strip()
+    if text == "🧑‍🔧 Men ustaman":
+        role = "usta"
+    elif text == "🙋‍♂️ Men mijozman":
+        role = "mijoz"
+    else:
+        await message.answer(
+            friendly("Iltimos, quyidagi tugmalardan birini tanlang."),
+            reply_markup=role_select_kb(),
+        )
+        return
+    await state.update_data(role=role)
+    await message.answer(
         friendly(
             "Botimizga qanday maqsadda tashrif buyurdingiz? "
             "(Masalan: Menga malakali santexnik kerak yoki Men ustaman, mijoz qidiryapman)"
@@ -82,7 +103,7 @@ async def onboarding_purpose(message: Message, state: FSMContext, db: Database):
     phone = data.get("phone")
     email = data.get("email")
     region = data.get("region")
-    role = detect_role(purpose)
+    role = data.get("role") or "mijoz"
 
     await db.add_user(
         tg_id=message.from_user.id,

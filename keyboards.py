@@ -31,6 +31,13 @@ def back_to_main_kb() -> ReplyKeyboardMarkup:
     return kb.as_markup(resize_keyboard=True)
 
 
+def role_select_kb() -> ReplyKeyboardMarkup:
+    kb = ReplyKeyboardBuilder()
+    kb.row(KeyboardButton(text="🧑‍🔧 Men ustaman"))
+    kb.row(KeyboardButton(text="🙋‍♂️ Men mijozman"))
+    return kb.as_markup(resize_keyboard=True, one_time_keyboard=True)
+
+
 def master_card_kb(tg_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="📞 Raqamini ochish (10💎)", callback_data=f"open_contact:{tg_id}")
