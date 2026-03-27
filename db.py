@@ -27,11 +27,13 @@ class Database:
                     top_until TEXT,
                     vip_until TEXT,
                     is_blocked INTEGER DEFAULT 0,
+                    last_seen TEXT,
                     created_at TEXT
                 )
                 """
             )
             await self._ensure_column(db, "users", "is_blocked", "INTEGER DEFAULT 0")
+            await self._ensure_column(db, "users", "last_seen", "TEXT")
             await db.commit()
 
     async def _ensure_column(self, db: aiosqlite.Connection, table: str, column: str, ddl: str) -> None:
@@ -75,6 +77,10 @@ class Database:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(f"UPDATE users SET {field} = ? WHERE tg_id = ?", (value, tg_id))
             await db.commit()
+
+    async def update_last_seen(self, tg_id: int) -> None:
+        now = datetime.utcnow().strftime(ISO_FMT)
+        await self.update_user_field(tg_id, "last_seen", now)
 
     async def add_diamonds(self, tg_id: int, amount: int) -> None:
         async with aiosqlite.connect(self.db_path) as db:
@@ -142,6 +148,16 @@ class Database:
             async with db.execute(query, params) as cur:
                 rows = await cur.fetchall()
                 return [int(r["tg_id"]) for r in rows]
+
+    async def list_users(self, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM users ORDER BY id DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ) as cur:
+                rows = await cur.fetchall()
+                return [dict(r) for r in rows]
 
     async def add_diamonds_all(self, amount: int, include_blocked: bool = False) -> int:
         async with aiosqlite.connect(self.db_path) as db:
