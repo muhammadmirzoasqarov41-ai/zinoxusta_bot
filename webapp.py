@@ -10,6 +10,7 @@ from aiogram import Bot
 
 from config import Config
 from db import Database
+from utils import friendly
 
 security = HTTPBasic()
 
@@ -161,6 +162,16 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
         _auth: None = Depends(_require_auth),
     ):
         await db.add_diamonds(user_id, amount)
+        try:
+            await bot.send_message(
+                user_id,
+                friendly(
+                    f"Tabriklaymiz! Sizning hisobingizga {amount} 💎 Olmos qo'shildi. "
+                    "Botimiz sizga doimo xizmat qilishdan mamnun."
+                ),
+            )
+        except Exception:
+            pass
         return RedirectResponse("/", status_code=303)
 
     @app.post("/remove-diamonds")
@@ -175,6 +186,18 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
     @app.post("/give-all")
     async def give_all(amount: int = Form(...), _auth: None = Depends(_require_auth)):
         await db.add_diamonds_all(amount)
+        user_ids = await db.list_user_ids()
+        for tg_id in user_ids:
+            try:
+                await bot.send_message(
+                    tg_id,
+                    friendly(
+                        f"Tabriklaymiz! Sizning hisobingizga {amount} 💎 Olmos qo'shildi. "
+                        "Bu botimizdan sizga kichik sovg'a."
+                    ),
+                )
+            except Exception:
+                pass
         return RedirectResponse("/", status_code=303)
 
     @app.post("/block")
