@@ -21,6 +21,11 @@ WELCOME_TEXT = (
 async def cmd_start(message: Message, state: FSMContext, db: Database):
     user = await db.get_user(message.from_user.id)
     if user:
+        if user.get("is_blocked") == 1:
+            await message.answer(
+                friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
+            )
+            return
         await message.answer(
             friendly(
                 "Assalomu alaykum! Sizni yana ko'rib turganimizdan xursandmiz. "

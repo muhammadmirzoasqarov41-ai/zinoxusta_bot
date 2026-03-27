@@ -26,11 +26,20 @@ class Database:
                     diamonds_spent INTEGER DEFAULT 0,
                     top_until TEXT,
                     vip_until TEXT,
+                    is_blocked INTEGER DEFAULT 0,
                     created_at TEXT
                 )
                 """
             )
+            await self._ensure_column(db, "users", "is_blocked", "INTEGER DEFAULT 0")
             await db.commit()
+
+    async def _ensure_column(self, db: aiosqlite.Connection, table: str, column: str, ddl: str) -> None:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(f"PRAGMA table_info({table})") as cur:
+            cols = [row["name"] for row in await cur.fetchall()]
+        if column not in cols:
+            await db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
     async def add_user(
         self,
@@ -100,7 +109,7 @@ class Database:
                 "(CASE WHEN top_until IS NOT NULL AND top_until > ? THEN 1 ELSE 0 END) AS is_top, "
                 "(CASE WHEN vip_until IS NOT NULL AND vip_until > ? THEN 1 ELSE 0 END) AS is_vip "
                 "FROM users "
-                "WHERE role = 'usta' "
+                "WHERE role = 'usta' AND is_blocked = 0 "
                 "ORDER BY is_top DESC, is_vip DESC, id DESC "
                 "LIMIT ? OFFSET ?"
             )
@@ -112,11 +121,39 @@ class Database:
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
-                "SELECT * FROM users WHERE role = 'usta' AND lower(region) = lower(?)",
+                "SELECT * FROM users WHERE role = 'usta' AND is_blocked = 0 AND lower(region) = lower(?)",
                 (region,),
             ) as cur:
                 rows = await cur.fetchall()
                 return [dict(r) for r in rows]
+
+    async def set_blocked(self, tg_id: int, blocked: bool) -> None:
+        await self.update_user_field(tg_id, "is_blocked", 1 if blocked else 0)
+
+    async def list_user_ids(self, include_blocked: bool = False) -> list[int]:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            if include_blocked:
+                query = "SELECT tg_id FROM users"
+                params: tuple[Any, ...] = ()
+            else:
+                query = "SELECT tg_id FROM users WHERE is_blocked = 0"
+                params = ()
+            async with db.execute(query, params) as cur:
+                rows = await cur.fetchall()
+                return [int(r["tg_id"]) for r in rows]
+
+    async def add_diamonds_all(self, amount: int, include_blocked: bool = False) -> int:
+        async with aiosqlite.connect(self.db_path) as db:
+            if include_blocked:
+                query = "UPDATE users SET diamonds = diamonds + ?"
+                params: tuple[Any, ...] = (amount,)
+            else:
+                query = "UPDATE users SET diamonds = diamonds + ? WHERE is_blocked = 0"
+                params = (amount,)
+            cur = await db.execute(query, params)
+            await db.commit()
+            return cur.rowcount if cur.rowcount is not None else 0
 
     async def set_top(self, tg_id: int, days: int = 3) -> None:
         until = (datetime.utcnow() + timedelta(days=days)).strftime(ISO_FMT)

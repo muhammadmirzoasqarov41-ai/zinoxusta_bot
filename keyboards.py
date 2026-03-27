@@ -40,6 +40,10 @@ def master_card_kb(tg_id: int) -> InlineKeyboardMarkup:
 def admin_menu_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.row(KeyboardButton(text="➕ Olmos qo'shish"), KeyboardButton(text="➖ Olmos ayirish"))
-    kb.row(KeyboardButton(text="📣 Xabar yuborish"), KeyboardButton(text="📊 Statistika"))
+    kb.row(KeyboardButton(text="💎 Barcha userlarga olmos"))
+    kb.row(KeyboardButton(text="👤 ID orqali xabar"))
+    kb.row(KeyboardButton(text="📣 Xabar yuborish"), KeyboardButton(text="📢 Reklama yuborish"))
+    kb.row(KeyboardButton(text="🚫 User bloklash"), KeyboardButton(text="✅ User blokdan olish"))
+    kb.row(KeyboardButton(text="📊 Statistika"))
     kb.row(KeyboardButton(text="⬅️ Orqaga"))
     return kb.as_markup(resize_keyboard=True)

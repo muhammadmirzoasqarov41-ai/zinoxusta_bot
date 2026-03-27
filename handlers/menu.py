@@ -31,6 +31,11 @@ async def balance(message: Message, db: Database):
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
+    if user.get("is_blocked") == 1:
+        await message.answer(
+            friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
+        )
+        return
     await message.answer(friendly(f"Sizning balansingiz: {user['diamonds']} 💎 Olmos."))
 
 
@@ -39,6 +44,11 @@ async def masters_list(message: Message, db: Database):
     user = await db.get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
+        return
+    if user.get("is_blocked") == 1:
+        await message.answer(
+            friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
+        )
         return
     masters = await db.list_masters(limit=10, offset=0)
     if not masters:
@@ -72,6 +82,11 @@ async def urgent_call(message: Message, db: Database, bot: Bot):
     user = await db.get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
+        return
+    if user.get("is_blocked") == 1:
+        await message.answer(
+            friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
+        )
         return
 
     if user["diamonds"] < 30:
@@ -123,6 +138,11 @@ async def usta_services_menu(message: Message, db: Database):
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
+    if user.get("is_blocked") == 1:
+        await message.answer(
+            friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
+        )
+        return
     if user["role"] != "usta":
         await message.answer(
             friendly(
@@ -141,6 +161,11 @@ async def buy_top(message: Message, db: Database):
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
+    if user.get("is_blocked") == 1:
+        await message.answer(
+            friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
+        )
+        return
     if user["diamonds"] < 50:
         await message.answer(friendly("TOP uchun 50 💎 Olmos kerak bo'ladi."))
         return
@@ -157,6 +182,11 @@ async def buy_vip(message: Message, db: Database):
     user = await db.get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
+        return
+    if user.get("is_blocked") == 1:
+        await message.answer(
+            friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
+        )
         return
     if user["diamonds"] < 100:
         await message.answer(friendly("VIP maqomi uchun 100 💎 Olmos kerak bo'ladi."))

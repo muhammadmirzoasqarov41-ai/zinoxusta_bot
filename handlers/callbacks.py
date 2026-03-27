@@ -23,6 +23,11 @@ async def open_contact(callback: CallbackQuery, db: Database):
             "Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting. 😊", show_alert=True
         )
         return
+    if user.get("is_blocked") == 1:
+        await callback.answer(
+            "Kechirasiz, akkauntingiz vaqtincha bloklangan. 😊", show_alert=True
+        )
+        return
 
     if user["diamonds"] < 10:
         await callback.answer("Balansingiz yetarli emas (10 💎 kerak). 😊", show_alert=True)
