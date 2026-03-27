@@ -5,6 +5,7 @@ import html
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import psutil
 
 from aiogram import Bot
 
@@ -27,6 +28,7 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
     async def index(request: Request, creds: HTTPBasicCredentials = Depends(security)):
         require_basic(config, creds)
         stats = await db.stats()
+        cpu_usage = psutil.cpu_percent(interval=0.2)
         users = await db.list_users(limit=200, offset=0)
 
         rows = "".join(
@@ -50,18 +52,53 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
           <meta charset='utf-8'/>
           <title>USTA QIDIR Admin</title>
           <style>
-            body {{ font-family: Arial, sans-serif; margin: 24px; }}
-            table {{ border-collapse: collapse; width: 100%; }}
-            th, td {{ border: 1px solid #ddd; padding: 8px; }}
-            th {{ background: #f4f4f4; }}
+            :root {{
+              --bg: #050707;
+              --panel: #0b1412;
+              --grid: #133026;
+              --text: #9ef0c7;
+              --accent: #3cff9b;
+              --muted: #5aa885;
+              --danger: #ff6b6b;
+            }}
+            * {{ box-sizing: border-box; }}
+            body {{
+              font-family: \"Share Tech Mono\", \"Courier New\", monospace;
+              background: radial-gradient(1200px 800px at 20% 10%, #0b2a1e 0%, #050707 60%);
+              color: var(--text);
+              margin: 24px;
+            }}
+            h1, h2, h3 {{ color: var(--accent); letter-spacing: 0.5px; }}
+            table {{ border-collapse: collapse; width: 100%; background: var(--panel); }}
+            th, td {{ border: 1px solid var(--grid); padding: 8px; }}
+            th {{ background: #0e1c18; color: var(--accent); }}
             .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }}
-            .card {{ border: 1px solid #ddd; padding: 12px; border-radius: 8px; }}
+            .card {{ border: 1px solid var(--grid); padding: 12px; border-radius: 8px; background: var(--panel); }}
             .card h3 {{ margin: 0 0 8px 0; }}
             .stats {{ display: flex; gap: 16px; flex-wrap: wrap; }}
-            .stat {{ padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; }}
+            .stat {{
+              padding: 8px 12px;
+              border: 1px solid var(--grid);
+              border-radius: 8px;
+              background: #0b1512;
+            }}
             form {{ display: flex; flex-direction: column; gap: 6px; }}
-            input {{ padding: 6px; }}
-            button {{ padding: 8px; cursor: pointer; }}
+            input {{
+              padding: 8px;
+              background: #07110f;
+              border: 1px solid var(--grid);
+              color: var(--text);
+            }}
+            button {{
+              padding: 8px;
+              cursor: pointer;
+              background: linear-gradient(135deg, #0f2b21, #0b1613);
+              color: var(--accent);
+              border: 1px solid var(--accent);
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }}
+            button:hover {{ filter: brightness(1.2); }}
           </style>
         </head>
         <body>
@@ -70,6 +107,7 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
             <div class='stat'>Foydalanuvchilar: {stats['total_users']}</div>
             <div class='stat'>Umumiy sarflangan olmos: {stats['total_spent']}</div>
             <div class='stat'>Umumiy balans: {stats['total_balance']}</div>
+            <div class='stat'>CPU usage: {cpu_usage:.1f}%</div>
           </div>
 
           <h2>Amallar</h2>
