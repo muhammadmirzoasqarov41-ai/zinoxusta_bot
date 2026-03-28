@@ -105,10 +105,13 @@ async def urgent_call(message: Message, db: Database, bot: Bot):
 
     masters = await db.list_masters_by_region(user["region"])
     if not masters:
-        await message.answer(
-            friendly("Afsuski, sizning hududingizda ustalar topilmadi. Hozircha olmos yechilmadi.")
-        )
-        return
+        # Agar hududda usta topilmasa, barcha hududlardagi ustalarga yuboramiz
+        masters = await db.list_masters(limit=500, offset=0)
+        if not masters:
+            await message.answer(
+                friendly("Afsuski, hozircha ustalar topilmadi. Hozircha olmos yechilmadi.")
+            )
+            return
 
     ok = await db.deduct_diamonds(user["tg_id"], 30)
     if not ok:
