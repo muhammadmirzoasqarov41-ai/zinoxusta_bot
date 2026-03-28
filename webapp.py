@@ -29,6 +29,7 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
         require_basic(config, creds)
         stats = await db.stats()
         cpu_usage = psutil.cpu_percent(interval=0.2)
+        paid_mode = await db.is_paid_mode()
         users = await db.list_users(limit=200, offset=0)
 
         rows = "".join(
@@ -108,6 +109,7 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
             <div class='stat'>Umumiy sarflangan olmos: {stats['total_spent']}</div>
             <div class='stat'>Umumiy balans: {stats['total_balance']}</div>
             <div class='stat'>CPU usage: {cpu_usage:.1f}%</div>
+            <div class='stat'>Bot rejimi: {'PULLIK' if paid_mode else 'TEKIN'}</div>
           </div>
 
           <h2>Amallar</h2>
@@ -147,6 +149,15 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
               <form method='post' action='/unblock'>
                 <input name='user_id' placeholder='User ID' required />
                 <button type='submit'>Blokdan olish</button>
+              </form>
+            </div>
+            <div class='card'>
+              <h3>Bot rejimi</h3>
+              <form method='post' action='/set-paid'>
+                <button type='submit'>Botni pullik qilish</button>
+              </form>
+              <form method='post' action='/set-free' style='margin-top:6px;'>
+                <button type='submit'>Botni tekin qilish</button>
               </form>
             </div>
             <div class='card'>
@@ -246,6 +257,16 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
     @app.post("/unblock")
     async def unblock(user_id: int = Form(...), _auth: None = Depends(_require_auth)):
         await db.set_blocked(user_id, False)
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/set-paid")
+    async def set_paid(_auth: None = Depends(_require_auth)):
+        await db.set_setting("paid_mode", "true")
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/set-free")
+    async def set_free(_auth: None = Depends(_require_auth)):
+        await db.set_setting("paid_mode", "false")
         return RedirectResponse("/", status_code=303)
 
     @app.post("/send-message")
