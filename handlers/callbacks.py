@@ -96,7 +96,7 @@ async def masters_page(callback: CallbackQuery, db: Database):
         f"Maqom: {badge_text}\n"
         f"Bio: {bio}\n"
         f"Reyting: {avg:.1f} ⭐️ ({cnt})\n"
-        f"Kontakt: Yopiq (ochish uchun 10 💎)"
+        f"Aloqa: Yopiq (jalb qilish uchun 10 💎)"
     )
     await callback.message.edit_text(
         friendly(text),
@@ -169,3 +169,31 @@ async def urgent_confirm(callback: CallbackQuery, db: Database):
         )
     )
     await callback.answer()
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("start_chat:"))
+async def start_chat(callback: CallbackQuery, db: Database):
+    if not callback.data:
+        return
+    target_raw = callback.data.split(":", 1)[1]
+    if not target_raw.isdigit():
+        await callback.answer("Noto'g'ri so'rov. 😊", show_alert=True)
+        return
+    target_id = int(target_raw)
+    user = await db.get_user(callback.from_user.id)
+    target = await db.get_user(target_id)
+    if not user or not target:
+        await callback.answer("Foydalanuvchi topilmadi. 😊", show_alert=True)
+        return
+    await db.start_chat(callback.from_user.id, target_id)
+    await callback.message.answer(
+        friendly("Chat boshlandi. Xabar yuborsangiz, usta bevosita oladi.")
+    )
+    try:
+        await callback.bot.send_message(
+            target_id,
+            friendly("Siz bilan mijoz chat boshladi. Xabar yuborsangiz, mijozga yetadi."),
+        )
+    except Exception:
+        pass
+    await callback.answer("Chat boshlandi. 😊")

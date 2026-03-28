@@ -75,7 +75,7 @@ async def masters_list(message: Message, db: Database):
         f"Maqom: {badge_text}\n"
         f"Bio: {bio}\n"
         f"Reyting: {avg:.1f} ⭐️ ({cnt})\n"
-        f"Kontakt: Yopiq (ochish uchun 10 💎)"
+        f"Aloqa: Yopiq (jalb qilish uchun 10 💎)"
     )
     from keyboards import master_card_nav_kb
 

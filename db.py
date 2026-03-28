@@ -73,6 +73,17 @@ class Database:
                 )
                 """
             )
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS chat_sessions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_a INTEGER,
+                    user_b INTEGER,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TEXT
+                )
+                """
+            )
             await db.commit()
 
     async def _ensure_column(self, db: aiosqlite.Connection, table: str, column: str, ddl: str) -> None:
@@ -315,3 +326,37 @@ class Database:
             ) as cur:
                 rows = await cur.fetchall()
                 return [dict(r) for r in rows]
+
+    async def start_chat(self, user_a: int, user_b: int) -> None:
+        async with aiosqlite.connect(self.db_path) as db:
+            # close existing chats for these users
+            await db.execute(
+                "UPDATE chat_sessions SET is_active = 0 WHERE user_a IN (?, ?) OR user_b IN (?, ?)",
+                (user_a, user_b, user_a, user_b),
+            )
+            await db.execute(
+                "INSERT INTO chat_sessions (user_a, user_b, is_active, created_at) VALUES (?, ?, 1, ?)",
+                (user_a, user_b, datetime.utcnow().strftime(ISO_FMT)),
+            )
+            await db.commit()
+
+    async def get_chat_partner(self, tg_id: int) -> int | None:
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute(
+                "SELECT user_a, user_b FROM chat_sessions WHERE is_active = 1 AND (user_a = ? OR user_b = ?) ORDER BY id DESC LIMIT 1",
+                (tg_id, tg_id),
+            ) as cur:
+                row = await cur.fetchone()
+                if not row:
+                    return None
+                user_a, user_b = row
+                return user_b if user_a == tg_id else user_a
+
+    async def end_chat(self, tg_id: int) -> bool:
+        async with aiosqlite.connect(self.db_path) as db:
+            cur = await db.execute(
+                "UPDATE chat_sessions SET is_active = 0 WHERE is_active = 1 AND (user_a = ? OR user_b = ?)",
+                (tg_id, tg_id),
+            )
+            await db.commit()
+            return (cur.rowcount or 0) > 0
