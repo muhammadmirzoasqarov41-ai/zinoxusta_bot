@@ -194,6 +194,13 @@ async def onboarding_purpose(message: Message, state: FSMContext, db: Database):
     profession = data.get("profession")
     bio = data.get("bio")
     photo_id = data.get("photo_id")
+    ref_code_raw = data.get("ref_code")
+    referrer_id = None
+    if ref_code_raw and ref_code_raw.startswith("ref_"):
+        ref_key = ref_code_raw.replace("ref_", "", 1)
+        ref_user = await db.get_by_ref_code(ref_key)
+        if ref_user and ref_user.get("tg_id") != message.from_user.id:
+            referrer_id = int(ref_user["tg_id"])
 
     await db.add_user(
         tg_id=message.from_user.id,
@@ -205,6 +212,8 @@ async def onboarding_purpose(message: Message, state: FSMContext, db: Database):
         profession=profession,
         bio=bio,
         photo_id=photo_id,
+        ref_code=f"u{message.from_user.id}",
+        referred_by=referrer_id,
         diamonds=10,
     )
 
@@ -214,6 +223,15 @@ async def onboarding_purpose(message: Message, state: FSMContext, db: Database):
         "Ro'yxatdan o'tganingiz uchun rahmat! 🎁 Sizga sovg'a sifatida 10 ta 💎 Olmos taqdim etildi. "
         "Botimiz doimo xizmatingizda. 😊\nYordam berishga tayyorman."
     )
+    if referrer_id:
+        await db.add_diamonds(referrer_id, 3)
+        try:
+            await message.bot.send_message(
+                referrer_id,
+                friendly("Tabriklaymiz! Taklifingiz orqali yangi foydalanuvchi ro'yxatdan o'tdi va sizga 3 💎 Olmos berildi."),
+            )
+        except Exception:
+            pass
     await message.answer(
         friendly("Quyidagi menyudan kerakli bo'limni tanlashingiz mumkin."),
         reply_markup=main_menu_kb(),

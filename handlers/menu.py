@@ -388,3 +388,24 @@ async def my_requests(message: Message, db: Database):
     for o in orders:
         text += f"- {o['order_type']} | {o['created_at']}\n"
     await message.answer(friendly(text))
+
+
+@router.message(lambda m: m.text == "🎁 Olmos ishlash")
+async def referral_info(message: Message, db: Database):
+    user = await db.get_user(message.from_user.id)
+    if not user:
+        await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
+        return
+    ref_code = user.get("ref_code") or f"u{message.from_user.id}"
+    bot = await message.bot.get_me()
+    link = f"https://t.me/{bot.username}?start=ref_{ref_code}"
+    text = (
+        "🎁 <b>Olmos ishlash — Referral dasturi</b>\n\n"
+        "Do'stlaringizni taklif qiling va har bir ro'yxatdan o'tgan tanishingiz uchun 3 💎 olmos oling!\n\n"
+        "✅ Qoidalar:\n"
+        "- Havolani do'stlaringizga yuboring\n"
+        "- Do'stlaringiz /start bosib ro'yxatdan o'tsin\n"
+        "- Har bir ro'yxatdan o'tgan do'stingiz uchun 3 💎 sizga beriladi\n\n"
+        f"🔗 Sizning havolangiz:\n{link}"
+    )
+    await message.answer(text)

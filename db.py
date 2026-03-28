@@ -24,6 +24,8 @@ class Database:
                     profession TEXT,
                     bio TEXT,
                     photo_id TEXT,
+                    ref_code TEXT,
+                    referred_by INTEGER,
                     diamonds INTEGER DEFAULT 0,
                     diamonds_spent INTEGER DEFAULT 0,
                     top_until TEXT,
@@ -39,6 +41,8 @@ class Database:
             await self._ensure_column(db, "users", "profession", "TEXT")
             await self._ensure_column(db, "users", "bio", "TEXT")
             await self._ensure_column(db, "users", "photo_id", "TEXT")
+            await self._ensure_column(db, "users", "ref_code", "TEXT")
+            await self._ensure_column(db, "users", "referred_by", "INTEGER")
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS ratings (
@@ -112,6 +116,8 @@ class Database:
         profession: str | None = None,
         bio: str | None = None,
         photo_id: str | None = None,
+        ref_code: str | None = None,
+        referred_by: int | None = None,
         diamonds: int = 10,
     ) -> None:
         created_at = datetime.utcnow().strftime(ISO_FMT)
@@ -119,10 +125,24 @@ class Database:
             await db.execute(
                 """
                 INSERT OR REPLACE INTO users
-                (tg_id, full_name, phone, region, purpose, role, profession, bio, photo_id, diamonds, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (tg_id, full_name, phone, region, purpose, role, profession, bio, photo_id, ref_code, referred_by, diamonds, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (tg_id, full_name, phone, region, purpose, role, profession, bio, photo_id, diamonds, created_at),
+                (
+                    tg_id,
+                    full_name,
+                    phone,
+                    region,
+                    purpose,
+                    role,
+                    profession,
+                    bio,
+                    photo_id,
+                    ref_code,
+                    referred_by,
+                    diamonds,
+                    created_at,
+                ),
             )
             await db.commit()
 
@@ -334,6 +354,13 @@ class Database:
             ) as cur:
                 rows = await cur.fetchall()
                 return [dict(r) for r in rows]
+
+    async def get_by_ref_code(self, ref_code: str) -> dict[str, Any] | None:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM users WHERE ref_code = ?", (ref_code,)) as cur:
+                row = await cur.fetchone()
+                return dict(row) if row else None
 
     async def get_setting(self, key: str, default: str | None = None) -> str | None:
         async with aiosqlite.connect(self.db_path) as db:

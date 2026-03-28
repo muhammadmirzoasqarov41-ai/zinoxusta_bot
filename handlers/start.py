@@ -1,5 +1,5 @@
 from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
@@ -18,7 +18,7 @@ WELCOME_TEXT = (
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, state: FSMContext, db: Database):
+async def cmd_start(message: Message, state: FSMContext, db: Database, command: CommandObject):
     user = await db.get_user(message.from_user.id)
     if user:
         if user.get("is_blocked") == 1:
@@ -35,6 +35,10 @@ async def cmd_start(message: Message, state: FSMContext, db: Database):
         )
         await state.clear()
         return
+
+    # Save referral code from /start if present (e.g. /start ref_xxx)
+    if command.args:
+        await state.update_data(ref_code=command.args.strip())
 
     await message.answer(WELCOME_TEXT)
     await message.answer(friendly("Iltimos, to'liq ism-sharifingizni kiriting."))

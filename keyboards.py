@@ -8,6 +8,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     kb.row(KeyboardButton(text="🔎 Usta qidirish"), KeyboardButton(text="⭐️ Ustani baholash"))
     kb.row(KeyboardButton(text="📜 Tarixim"), KeyboardButton(text="📥 So'rovlar"))
     kb.row(KeyboardButton(text="🚪 Chatni yakunlash"))
+    kb.row(KeyboardButton(text="🎁 Olmos ishlash"))
     kb.row(KeyboardButton(text="🛠 Usta xizmatlari"), KeyboardButton(text="💎 Olmos balansim"))
     kb.row(KeyboardButton(text="✏️ Profilni tahrirlash"), KeyboardButton(text="💎 Olmos sotib olish"))
     kb.row(KeyboardButton(text="ℹ️ Bot haqida"), KeyboardButton(text="❓ Yordam"))
