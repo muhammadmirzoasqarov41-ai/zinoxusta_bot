@@ -23,6 +23,7 @@ class Database:
                     role TEXT,
                     profession TEXT,
                     bio TEXT,
+                    photo_id TEXT,
                     diamonds INTEGER DEFAULT 0,
                     diamonds_spent INTEGER DEFAULT 0,
                     top_until TEXT,
@@ -37,6 +38,41 @@ class Database:
             await self._ensure_column(db, "users", "last_seen", "TEXT")
             await self._ensure_column(db, "users", "profession", "TEXT")
             await self._ensure_column(db, "users", "bio", "TEXT")
+            await self._ensure_column(db, "users", "photo_id", "TEXT")
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS ratings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    master_tg_id INTEGER,
+                    from_tg_id INTEGER,
+                    rating INTEGER,
+                    comment TEXT,
+                    created_at TEXT
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS orders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    from_tg_id INTEGER,
+                    to_tg_id INTEGER,
+                    order_type TEXT,
+                    created_at TEXT
+                )
+                """
+            )
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tg_id INTEGER,
+                    amount INTEGER,
+                    reason TEXT,
+                    created_at TEXT
+                )
+                """
+            )
             await db.commit()
 
     async def _ensure_column(self, db: aiosqlite.Connection, table: str, column: str, ddl: str) -> None:
@@ -56,6 +92,7 @@ class Database:
         role: str,
         profession: str | None = None,
         bio: str | None = None,
+        photo_id: str | None = None,
         diamonds: int = 10,
     ) -> None:
         created_at = datetime.utcnow().strftime(ISO_FMT)
@@ -63,10 +100,10 @@ class Database:
             await db.execute(
                 """
                 INSERT OR REPLACE INTO users
-                (tg_id, full_name, phone, region, purpose, role, profession, bio, diamonds, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (tg_id, full_name, phone, region, purpose, role, profession, bio, photo_id, diamonds, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (tg_id, full_name, phone, region, purpose, role, profession, bio, diamonds, created_at),
+                (tg_id, full_name, phone, region, purpose, role, profession, bio, photo_id, diamonds, created_at),
             )
             await db.commit()
 
@@ -92,6 +129,10 @@ class Database:
                 "UPDATE users SET diamonds = diamonds + ? WHERE tg_id = ?",
                 (amount, tg_id),
             )
+            await db.execute(
+                "INSERT INTO transactions (tg_id, amount, reason, created_at) VALUES (?, ?, ?, ?)",
+                (tg_id, amount, "add", datetime.utcnow().strftime(ISO_FMT)),
+            )
             await db.commit()
 
     async def deduct_diamonds(self, tg_id: int, amount: int) -> bool:
@@ -106,6 +147,10 @@ class Database:
             await db.execute(
                 "UPDATE users SET diamonds = diamonds - ?, diamonds_spent = diamonds_spent + ? WHERE tg_id = ?",
                 (amount, amount, tg_id),
+            )
+            await db.execute(
+                "INSERT INTO transactions (tg_id, amount, reason, created_at) VALUES (?, ?, ?, ?)",
+                (tg_id, -amount, "deduct", datetime.utcnow().strftime(ISO_FMT)),
             )
             await db.commit()
             return True
@@ -199,3 +244,74 @@ class Database:
             "total_spent": int(total_spent),
             "total_balance": int(total_balance),
         }
+    async def list_masters_by_profession(self, profession: str, limit: int = 10, offset: int = 0) -> list[dict[str, Any]]:
+        now = datetime.utcnow().strftime(ISO_FMT)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            query = (
+                "SELECT *, "
+                "(CASE WHEN top_until IS NOT NULL AND top_until > ? THEN 1 ELSE 0 END) AS is_top, "
+                "(CASE WHEN vip_until IS NOT NULL AND vip_until > ? THEN 1 ELSE 0 END) AS is_vip "
+                "FROM users "
+                "WHERE role = 'usta' AND is_blocked = 0 AND lower(profession) = lower(?) "
+                "ORDER BY is_top DESC, is_vip DESC, id DESC "
+                "LIMIT ? OFFSET ?"
+            )
+            async with db.execute(query, (now, now, profession, limit, offset)) as cur:
+                rows = await cur.fetchall()
+                return [dict(r) for r in rows]
+
+    async def add_rating(self, master_tg_id: int, from_tg_id: int, rating: int, comment: str | None) -> None:
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "INSERT INTO ratings (master_tg_id, from_tg_id, rating, comment, created_at) VALUES (?, ?, ?, ?, ?)",
+                (master_tg_id, from_tg_id, rating, comment, datetime.utcnow().strftime(ISO_FMT)),
+            )
+            await db.commit()
+
+    async def get_master_rating(self, master_tg_id: int) -> tuple[float, int]:
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute(
+                "SELECT COALESCE(AVG(rating),0), COUNT(*) FROM ratings WHERE master_tg_id = ?",
+                (master_tg_id,),
+            ) as cur:
+                row = await cur.fetchone()
+                return float(row[0]), int(row[1])
+
+    async def add_order(self, from_tg_id: int, to_tg_id: int, order_type: str) -> None:
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "INSERT INTO orders (from_tg_id, to_tg_id, order_type, created_at) VALUES (?, ?, ?, ?)",
+                (from_tg_id, to_tg_id, order_type, datetime.utcnow().strftime(ISO_FMT)),
+            )
+            await db.commit()
+
+    async def list_orders_for_user(self, tg_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM orders WHERE from_tg_id = ? ORDER BY id DESC LIMIT ?",
+                (tg_id, limit),
+            ) as cur:
+                rows = await cur.fetchall()
+                return [dict(r) for r in rows]
+
+    async def list_orders_for_master(self, tg_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM orders WHERE to_tg_id = ? ORDER BY id DESC LIMIT ?",
+                (tg_id, limit),
+            ) as cur:
+                rows = await cur.fetchall()
+                return [dict(r) for r in rows]
+
+    async def list_transactions(self, tg_id: int, limit: int = 20) -> list[dict[str, Any]]:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT * FROM transactions WHERE tg_id = ? ORDER BY id DESC LIMIT ?",
+                (tg_id, limit),
+            ) as cur:
+                rows = await cur.fetchall()
+                return [dict(r) for r in rows]

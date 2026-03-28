@@ -10,6 +10,7 @@ class Onboarding(StatesGroup):
     profession = State()
     profession_custom = State()
     bio = State()
+    photo = State()
     purpose = State()
 
 
@@ -51,3 +52,17 @@ class AdminGiveAllDiamonds(StatesGroup):
 class ProfileEdit(StatesGroup):
     field = State()
     value = State()
+
+
+class RateMaster(StatesGroup):
+    master_id = State()
+    rating = State()
+    comment = State()
+
+
+class SearchProfession(StatesGroup):
+    profession = State()
+
+
+class SearchRegion(StatesGroup):
+    region = State()

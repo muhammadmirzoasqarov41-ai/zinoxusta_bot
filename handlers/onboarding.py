@@ -6,7 +6,15 @@ from db import Database
 from aiogram import F
 from aiogram.types import CallbackQuery
 
-from keyboards import contact_kb, main_menu_kb, role_select_kb, profession_kb, regions_kb, districts_kb
+from keyboards import (
+    contact_kb,
+    main_menu_kb,
+    role_select_kb,
+    profession_kb,
+    regions_kb,
+    districts_kb,
+    skip_kb,
+)
 from states import Onboarding
 from utils import friendly
 
@@ -147,6 +155,22 @@ async def onboarding_bio(message: Message, state: FSMContext):
         return
     await state.update_data(bio=bio)
     await message.answer(
+        friendly("Profil uchun rasmingizni yuboring (ixtiyoriy)."),
+        reply_markup=skip_kb(),
+    )
+    await state.set_state(Onboarding.photo)
+
+
+@router.message(Onboarding.photo)
+async def onboarding_photo(message: Message, state: FSMContext):
+    if message.text and "O'tkazib yuborish" in message.text:
+        await state.update_data(photo_id=None)
+    elif message.photo:
+        await state.update_data(photo_id=message.photo[-1].file_id)
+    else:
+        await message.answer(friendly("Iltimos, rasm yuboring yoki o'tkazib yuboring."), reply_markup=skip_kb())
+        return
+    await message.answer(
         friendly(
             "Botimizga qanday maqsadda tashrif buyurdingiz? "
             "(Masalan: Menga malakali santexnik kerak yoki Men ustaman, mijoz qidiryapman)"
@@ -169,6 +193,7 @@ async def onboarding_purpose(message: Message, state: FSMContext, db: Database):
     role = data.get("role") or "mijoz"
     profession = data.get("profession")
     bio = data.get("bio")
+    photo_id = data.get("photo_id")
 
     await db.add_user(
         tg_id=message.from_user.id,
@@ -179,6 +204,7 @@ async def onboarding_purpose(message: Message, state: FSMContext, db: Database):
         role=role,
         profession=profession,
         bio=bio,
+        photo_id=photo_id,
         diamonds=10,
     )
 

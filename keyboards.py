@@ -5,6 +5,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 def main_menu_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.row(KeyboardButton(text="🧑‍🔧 Ustalar ro'yxati"), KeyboardButton(text="🚨 Shoshilinch chaqiruv"))
+    kb.row(KeyboardButton(text="🔎 Usta qidirish"), KeyboardButton(text="⭐️ Ustani baholash"))
+    kb.row(KeyboardButton(text="📜 Tarixim"), KeyboardButton(text="📥 So'rovlar"))
     kb.row(KeyboardButton(text="🛠 Usta xizmatlari"), KeyboardButton(text="💎 Olmos balansim"))
     kb.row(KeyboardButton(text="✏️ Profilni tahrirlash"), KeyboardButton(text="💎 Olmos sotib olish"))
     kb.row(KeyboardButton(text="ℹ️ Bot haqida"), KeyboardButton(text="❓ Yordam"))
@@ -95,8 +97,15 @@ def edit_profile_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.row(KeyboardButton(text="Ism-sharif"), KeyboardButton(text="Telefon"))
     kb.row(KeyboardButton(text="Hudud"), KeyboardButton(text="Bio"))
+    kb.row(KeyboardButton(text="📷 Profil rasmi"))
     kb.row(KeyboardButton(text="⬅️ Orqaga"))
     return kb.as_markup(resize_keyboard=True)
+
+
+def skip_kb() -> ReplyKeyboardMarkup:
+    kb = ReplyKeyboardBuilder()
+    kb.row(KeyboardButton(text="⏭️ O'tkazib yuborish"))
+    return kb.as_markup(resize_keyboard=True, one_time_keyboard=True)
 
 
 def master_card_kb(tg_id: int) -> InlineKeyboardMarkup:
@@ -113,6 +122,14 @@ def master_card_nav_kb(tg_id: int, offset: int, has_next: bool, has_prev: bool) 
     if has_next:
         builder.button(text="➡️ Keyingi", callback_data=f"masters_page:{offset+1}")
     builder.adjust(1, 2)
+    return builder.as_markup()
+
+
+def urgent_confirm_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ Tasdiqlash", callback_data="urgent_confirm")
+    builder.button(text="❌ Bekor qilish", callback_data="urgent_cancel")
+    builder.adjust(2)
     return builder.as_markup()
 
 
