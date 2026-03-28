@@ -303,6 +303,22 @@ async def admin_stats(message: Message, db: Database, config: Config):
     )
 
 
+@router.message(lambda m: m.text == "🆓 Botni tekin qilish")
+async def set_free_mode(message: Message, db: Database, config: Config):
+    if not is_admin(message.from_user, config.admin_id, config.admin_username):
+        return
+    await db.set_setting("paid_mode", "false")
+    await message.answer(friendly("Bot rejimi: TEKIN. Endi xizmatlar olmos yechmaydi."))
+
+
+@router.message(lambda m: m.text == "💰 Botni pullik qilish")
+async def set_paid_mode(message: Message, db: Database, config: Config):
+    if not is_admin(message.from_user, config.admin_id, config.admin_username):
+        return
+    await db.set_setting("paid_mode", "true")
+    await message.answer(friendly("Bot rejimi: PULLIK. Endi xizmatlar olmos yechadi."))
+
+
 @router.message(lambda m: m.text == "⬅️ Orqaga")
 async def admin_back(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):

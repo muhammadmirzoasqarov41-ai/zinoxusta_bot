@@ -112,20 +112,23 @@ def skip_kb() -> ReplyKeyboardMarkup:
 def master_card_kb(tg_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🔔 Jalb qilish (10💎)", callback_data=f"open_contact:{tg_id}")
-    builder.button(text="💬 Chat boshlash", callback_data=f"start_chat:{tg_id}")
-    builder.adjust(1)
     return builder.as_markup()
 
 
 def master_card_nav_kb(tg_id: int, offset: int, has_next: bool, has_prev: bool) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🔔 Jalb qilish (10💎)", callback_data=f"open_contact:{tg_id}")
-    builder.button(text="💬 Chat boshlash", callback_data=f"start_chat:{tg_id}")
     if has_prev:
         builder.button(text="⬅️ Oldingi", callback_data=f"masters_page:{max(offset-1,0)}")
     if has_next:
         builder.button(text="➡️ Keyingi", callback_data=f"masters_page:{offset+1}")
     builder.adjust(1, 2, 2)
+    return builder.as_markup()
+
+
+def chat_start_kb(tg_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="💬 Chat boshlash", callback_data=f"start_chat:{tg_id}")
     return builder.as_markup()
 
 
@@ -144,6 +147,7 @@ def admin_menu_kb() -> ReplyKeyboardMarkup:
     kb.row(KeyboardButton(text="👤 ID orqali xabar"))
     kb.row(KeyboardButton(text="📣 Xabar yuborish"), KeyboardButton(text="📢 Reklama yuborish"))
     kb.row(KeyboardButton(text="🚫 User bloklash"), KeyboardButton(text="✅ User blokdan olish"))
+    kb.row(KeyboardButton(text="🆓 Botni tekin qilish"), KeyboardButton(text="💰 Botni pullik qilish"))
     kb.row(KeyboardButton(text="📊 Statistika"))
     kb.row(KeyboardButton(text="⬅️ Orqaga"))
     return kb.as_markup(resize_keyboard=True)

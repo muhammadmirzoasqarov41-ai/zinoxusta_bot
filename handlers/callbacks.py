@@ -5,7 +5,7 @@ from datetime import datetime
 
 from db import Database, ISO_FMT
 from utils import friendly
-from keyboards import master_card_nav_kb
+from keyboards import master_card_nav_kb, chat_start_kb
 
 router = Router()
 
@@ -32,7 +32,8 @@ async def open_contact(callback: CallbackQuery, db: Database):
         )
         return
 
-    if user["diamonds"] < 10:
+    paid_mode = await db.is_paid_mode()
+    if paid_mode and user["diamonds"] < 10:
         await callback.answer("Balansingiz yetarli emas (10 💎 kerak). 😊", show_alert=True)
         return
 
@@ -41,10 +42,11 @@ async def open_contact(callback: CallbackQuery, db: Database):
         await callback.answer("Usta topilmadi. 😊", show_alert=True)
         return
 
-    ok = await db.deduct_diamonds(user["tg_id"], 10)
-    if not ok:
-        await callback.answer("Balansingiz yetarli emas. 😊", show_alert=True)
-        return
+    if paid_mode:
+        ok = await db.deduct_diamonds(user["tg_id"], 10)
+        if not ok:
+            await callback.answer("Balansingiz yetarli emas. 😊", show_alert=True)
+            return
 
     text = (
         "Usta kontakti ochildi:\n"
@@ -54,7 +56,7 @@ async def open_contact(callback: CallbackQuery, db: Database):
         "Rahmat!"
     )
     await db.add_order(user["tg_id"], target_tg_id, "open_contact")
-    await callback.message.answer(friendly(text))
+    await callback.message.answer(friendly(text), reply_markup=chat_start_kb(target_tg_id))
     await callback.answer("Kontakt ochildi. 😊")
 
 
@@ -125,7 +127,8 @@ async def urgent_confirm(callback: CallbackQuery, db: Database):
     if user.get("is_blocked") == 1:
         await callback.answer("Kechirasiz, akkauntingiz vaqtincha bloklangan. 😊", show_alert=True)
         return
-    if user["diamonds"] < 30:
+    paid_mode = await db.is_paid_mode()
+    if paid_mode and user["diamonds"] < 30:
         await callback.answer("Balansingiz yetarli emas (30 💎 kerak). 😊", show_alert=True)
         return
 
@@ -139,10 +142,11 @@ async def urgent_confirm(callback: CallbackQuery, db: Database):
             await callback.answer()
             return
 
-    ok = await db.deduct_diamonds(user["tg_id"], 30)
-    if not ok:
-        await callback.answer("Balansingiz yetarli emas. 😊", show_alert=True)
-        return
+    if paid_mode:
+        ok = await db.deduct_diamonds(user["tg_id"], 30)
+        if not ok:
+            await callback.answer("Balansingiz yetarli emas. 😊", show_alert=True)
+            return
 
     sent = 0
     for master in masters:

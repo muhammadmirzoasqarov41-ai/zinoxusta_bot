@@ -84,6 +84,14 @@ class Database:
                 )
                 """
             )
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                )
+                """
+            )
             await db.commit()
 
     async def _ensure_column(self, db: aiosqlite.Connection, table: str, column: str, ddl: str) -> None:
@@ -326,6 +334,24 @@ class Database:
             ) as cur:
                 rows = await cur.fetchall()
                 return [dict(r) for r in rows]
+
+    async def get_setting(self, key: str, default: str | None = None) -> str | None:
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("SELECT value FROM settings WHERE key = ?", (key,)) as cur:
+                row = await cur.fetchone()
+                return row[0] if row else default
+
+    async def set_setting(self, key: str, value: str) -> None:
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
+            await db.commit()
+
+    async def is_paid_mode(self) -> bool:
+        value = await self.get_setting("paid_mode", "true")
+        return str(value).lower() in {"1", "true", "yes", "on"}
 
     async def start_chat(self, user_a: int, user_b: int) -> None:
         async with aiosqlite.connect(self.db_path) as db:

@@ -99,7 +99,8 @@ async def urgent_call(message: Message, db: Database, bot: Bot):
         )
         return
 
-    if user["diamonds"] < 30:
+    paid_mode = await db.is_paid_mode()
+    if paid_mode and user["diamonds"] < 30:
         await message.answer(
             friendly("Kechirasiz, shoshilinch chaqiruv uchun 30 💎 Olmos kerak bo'ladi.")
         )
@@ -145,13 +146,15 @@ async def buy_top(message: Message, db: Database):
             friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
         )
         return
-    if user["diamonds"] < 50:
+    paid_mode = await db.is_paid_mode()
+    if paid_mode and user["diamonds"] < 50:
         await message.answer(friendly("TOP uchun 50 💎 Olmos kerak bo'ladi."))
         return
-    ok = await db.deduct_diamonds(user["tg_id"], 50)
-    if not ok:
-        await message.answer(friendly("Balansingiz yetarli emas."))
-        return
+    if paid_mode:
+        ok = await db.deduct_diamonds(user["tg_id"], 50)
+        if not ok:
+            await message.answer(friendly("Balansingiz yetarli emas."))
+            return
     await db.set_top(user["tg_id"], days=3)
     await message.answer(friendly("Profilingiz 3 kun uchun TOP ro'yxatiga chiqarildi."))
 
@@ -167,13 +170,15 @@ async def buy_vip(message: Message, db: Database):
             friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
         )
         return
-    if user["diamonds"] < 100:
+    paid_mode = await db.is_paid_mode()
+    if paid_mode and user["diamonds"] < 100:
         await message.answer(friendly("VIP maqomi uchun 100 💎 Olmos kerak bo'ladi."))
         return
-    ok = await db.deduct_diamonds(user["tg_id"], 100)
-    if not ok:
-        await message.answer(friendly("Balansingiz yetarli emas."))
-        return
+    if paid_mode:
+        ok = await db.deduct_diamonds(user["tg_id"], 100)
+        if not ok:
+            await message.answer(friendly("Balansingiz yetarli emas."))
+            return
     await db.set_vip(user["tg_id"], days=3650)
     await message.answer(friendly("Profilingizga VIP maqomi berildi."))
 
