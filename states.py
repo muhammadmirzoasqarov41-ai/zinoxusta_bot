@@ -4,9 +4,12 @@ from aiogram.fsm.state import State, StatesGroup
 class Onboarding(StatesGroup):
     full_name = State()
     phone = State()
-    email = State()
     region = State()
+    district = State()
     role = State()
+    profession = State()
+    profession_custom = State()
+    bio = State()
     purpose = State()
 
 
@@ -43,3 +46,8 @@ class AdminUnblockUser(StatesGroup):
 
 class AdminGiveAllDiamonds(StatesGroup):
     amount = State()
+
+
+class ProfileEdit(StatesGroup):
+    field = State()
+    value = State()

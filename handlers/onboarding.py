@@ -3,7 +3,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from db import Database
-from keyboards import contact_kb, main_menu_kb, role_select_kb
+from aiogram import F
+from aiogram.types import CallbackQuery
+
+from keyboards import contact_kb, main_menu_kb, role_select_kb, profession_kb, regions_kb, districts_kb
 from states import Onboarding
 from utils import friendly
 
@@ -35,37 +38,49 @@ async def onboarding_phone(message: Message, state: FSMContext):
         )
         return
     await state.update_data(phone=message.contact.phone_number)
-    await message.answer(friendly("Elektron pochtangizni (email) kiriting."))
-    await state.set_state(Onboarding.email)
-
-
-@router.message(Onboarding.email)
-async def onboarding_email(message: Message, state: FSMContext):
-    email = (message.text or "").strip()
-    if "@" not in email or "." not in email:
-        await message.answer(friendly("Iltimos, to'g'ri email kiriting."))
-        return
-    await state.update_data(email=email)
     await message.answer(
-        friendly(
-            "Yashash hududingizni yozing (Masalan: Andijon viloyati, Qo'rg'ontepa tumani)."
-        )
+        friendly("Yashash hududingizni tanlang:"),
+        reply_markup=regions_kb(),
     )
     await state.set_state(Onboarding.region)
 
 
 @router.message(Onboarding.region)
 async def onboarding_region(message: Message, state: FSMContext):
-    region = (message.text or "").strip()
-    if len(region) < 3:
-        await message.answer(friendly("Iltimos, yashash hududingizni to'liqroq yozing."))
-        return
+    await message.answer(friendly("Iltimos, hududni tugmalar orqali tanlang."))
+
+
+@router.callback_query(F.data == "region_back")
+async def region_back(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(friendly("Yashash hududingizni tanlang:"))
+    await callback.message.edit_reply_markup(reply_markup=regions_kb())
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("region:"))
+async def pick_region(callback: CallbackQuery, state: FSMContext):
+    region = callback.data.split("region:", 1)[1]
     await state.update_data(region=region)
-    await message.answer(
+    await callback.message.edit_text(friendly(f"{region} tanlandi. Endi tumanni tanlang:"))
+    await callback.message.edit_reply_markup(reply_markup=districts_kb(region))
+    await state.set_state(Onboarding.district)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("district:"))
+async def pick_district(callback: CallbackQuery, state: FSMContext):
+    _, region, district = callback.data.split(":", 2)
+    await state.update_data(region=f"{region}, {district}")
+    await callback.message.edit_text(
+        friendly(f"Hududingiz: {region}, {district}. Endi o'zingizni tanlang:")
+    )
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer(
         friendly("Iltimos, o'zingizni tanlang: usta yoki mijoz?"),
         reply_markup=role_select_kb(),
     )
     await state.set_state(Onboarding.role)
+    await callback.answer()
 
 
 @router.message(Onboarding.role)
@@ -82,6 +97,55 @@ async def onboarding_role(message: Message, state: FSMContext):
         )
         return
     await state.update_data(role=role)
+    if role == "usta":
+        await message.answer(
+            friendly("Kasbingizni tanlang:"),
+            reply_markup=profession_kb(),
+        )
+        await state.set_state(Onboarding.profession)
+        return
+    await message.answer(
+        friendly(
+            "Botimizga qanday maqsadda tashrif buyurdingiz? "
+            "(Masalan: Menga malakali santexnik kerak yoki Men ustaman, mijoz qidiryapman)"
+        )
+    )
+    await state.set_state(Onboarding.purpose)
+
+
+@router.message(Onboarding.profession)
+async def onboarding_profession(message: Message, state: FSMContext):
+    text = (message.text or "").strip()
+    if text == "🚫 Hech qaysi":
+        await message.answer(friendly("Kasbingizni yozing (masalan: santexnik)."))
+        await state.set_state(Onboarding.profession_custom)
+        return
+    if len(text) < 2:
+        await message.answer(friendly("Iltimos, kasbingizni tanlang."))
+        return
+    await state.update_data(profession=text)
+    await message.answer(friendly("O'zingiz haqingizda qisqacha bio yozing."))
+    await state.set_state(Onboarding.bio)
+
+
+@router.message(Onboarding.profession_custom)
+async def onboarding_profession_custom(message: Message, state: FSMContext):
+    text = (message.text or "").strip()
+    if len(text) < 2:
+        await message.answer(friendly("Iltimos, kasbingizni aniqroq yozing."))
+        return
+    await state.update_data(profession=text)
+    await message.answer(friendly("O'zingiz haqingizda qisqacha bio yozing."))
+    await state.set_state(Onboarding.bio)
+
+
+@router.message(Onboarding.bio)
+async def onboarding_bio(message: Message, state: FSMContext):
+    bio = (message.text or "").strip()
+    if len(bio) < 3:
+        await message.answer(friendly("Bio juda qisqa. Iltimos, biroz batafsil yozing."))
+        return
+    await state.update_data(bio=bio)
     await message.answer(
         friendly(
             "Botimizga qanday maqsadda tashrif buyurdingiz? "
@@ -101,18 +165,20 @@ async def onboarding_purpose(message: Message, state: FSMContext, db: Database):
     data = await state.get_data()
     full_name = data.get("full_name")
     phone = data.get("phone")
-    email = data.get("email")
     region = data.get("region")
     role = data.get("role") or "mijoz"
+    profession = data.get("profession")
+    bio = data.get("bio")
 
     await db.add_user(
         tg_id=message.from_user.id,
         full_name=full_name,
         phone=phone,
-        email=email,
         region=region,
         purpose=purpose,
         role=role,
+        profession=profession,
+        bio=bio,
         diamonds=10,
     )
 

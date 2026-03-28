@@ -18,10 +18,11 @@ class Database:
                     tg_id INTEGER UNIQUE,
                     full_name TEXT,
                     phone TEXT,
-                    email TEXT,
                     region TEXT,
                     purpose TEXT,
                     role TEXT,
+                    profession TEXT,
+                    bio TEXT,
                     diamonds INTEGER DEFAULT 0,
                     diamonds_spent INTEGER DEFAULT 0,
                     top_until TEXT,
@@ -34,6 +35,8 @@ class Database:
             )
             await self._ensure_column(db, "users", "is_blocked", "INTEGER DEFAULT 0")
             await self._ensure_column(db, "users", "last_seen", "TEXT")
+            await self._ensure_column(db, "users", "profession", "TEXT")
+            await self._ensure_column(db, "users", "bio", "TEXT")
             await db.commit()
 
     async def _ensure_column(self, db: aiosqlite.Connection, table: str, column: str, ddl: str) -> None:
@@ -48,10 +51,11 @@ class Database:
         tg_id: int,
         full_name: str,
         phone: str,
-        email: str,
         region: str,
         purpose: str,
         role: str,
+        profession: str | None = None,
+        bio: str | None = None,
         diamonds: int = 10,
     ) -> None:
         created_at = datetime.utcnow().strftime(ISO_FMT)
@@ -59,10 +63,10 @@ class Database:
             await db.execute(
                 """
                 INSERT OR REPLACE INTO users
-                (tg_id, full_name, phone, email, region, purpose, role, diamonds, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (tg_id, full_name, phone, region, purpose, role, profession, bio, diamonds, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (tg_id, full_name, phone, email, region, purpose, role, diamonds, created_at),
+                (tg_id, full_name, phone, region, purpose, role, profession, bio, diamonds, created_at),
             )
             await db.commit()
 

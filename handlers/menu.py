@@ -1,11 +1,13 @@
 from datetime import datetime
 
 from aiogram import Bot, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from db import Database, ISO_FMT
-from keyboards import main_menu_kb, usta_services_kb
+from keyboards import main_menu_kb, usta_services_kb, edit_profile_kb
 from utils import friendly
+from states import ProfileEdit
 
 router = Router()
 
@@ -50,31 +52,37 @@ async def masters_list(message: Message, db: Database):
             friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
         )
         return
-    masters = await db.list_masters(limit=10, offset=0)
+    masters = await db.list_masters(limit=2, offset=0)
     if not masters:
         await message.answer(friendly("Hozircha ustalar ro'yxati bo'sh. Keyinroq urinib ko'ring."))
         return
-
     await message.answer(friendly("Quyida ustalar ro'yxati taqdim etiladi:"))
     now = datetime.utcnow().strftime(ISO_FMT)
-    for master in masters:
-        is_top = master.get("top_until") and master["top_until"] > now
-        is_vip = master.get("vip_until") and master["vip_until"] > now
-        badges = []
-        if is_top:
-            badges.append("TOP")
-        if is_vip:
-            badges.append("VIP")
-        badge_text = ", ".join(badges) if badges else "Oddiy"
-        text = (
-            f"Ism-sharif: {master['full_name']}\n"
-            f"Hudud: {master['region']}\n"
-            f"Maqom: {badge_text}\n"
-            f"Kontakt: Yopiq (ochish uchun 10 💎)"
-        )
-        from keyboards import master_card_kb
+    master = masters[0]
+    is_top = master.get("top_until") and master["top_until"] > now
+    is_vip = master.get("vip_until") and master["vip_until"] > now
+    badges = []
+    if is_top:
+        badges.append("TOP")
+    if is_vip:
+        badges.append("VIP")
+    badge_text = ", ".join(badges) if badges else "Oddiy"
+    bio = master.get("bio") or "Ko'rsatilmagan"
+    text = (
+        f"Ism-sharif: {master['full_name']}\n"
+        f"Hudud: {master['region']}\n"
+        f"Maqom: {badge_text}\n"
+        f"Bio: {bio}\n"
+        f"Kontakt: Yopiq (ochish uchun 10 💎)"
+    )
+    from keyboards import master_card_nav_kb
 
-        await message.answer(friendly(text), reply_markup=master_card_kb(master["tg_id"]))
+    await message.answer(
+        friendly(text),
+        reply_markup=master_card_nav_kb(
+            master["tg_id"], offset=0, has_next=len(masters) > 1, has_prev=False
+        ),
+    )
 
 
 @router.message(lambda m: m.text == "🚨 Shoshilinch chaqiruv")
@@ -208,6 +216,68 @@ async def back_to_main(message: Message):
 async def help_message(message: Message):
     await message.answer(
         friendly(
-            "Sizga yordam berishdan mamnunmiz. Menyudan kerakli bo'limni tanlang yoki /start buyrug'ini bosing."
+            "Yordam kerak bo'lsa, admin bilan bog'laning: @zinox_1M"
         )
     )
+
+
+@router.message(lambda m: m.text == "ℹ️ Bot haqida")
+async def about_bot(message: Message):
+    await message.answer(
+        friendly(
+            "USTA QIDIR — malakali ustalarni tez topish va mijozlarga xizmat ko'rsatishni osonlashtiruvchi bot.\n"
+            "✅ Ichki olmos tizimi\n"
+            "✅ Shoshilinch chaqiruv\n"
+            "✅ TOP va VIP ustalar\n"
+            "✅ Qulay va tezkor muloqot"
+        )
+    )
+
+
+@router.message(lambda m: m.text == "✏️ Profilni tahrirlash")
+async def edit_profile_start(message: Message, state: FSMContext, db: Database):
+    user = await db.get_user(message.from_user.id)
+    if not user:
+        await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
+        return
+    if user.get("is_blocked") == 1:
+        await message.answer(
+            friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
+        )
+        return
+    await message.answer(friendly("Qaysi ma'lumotni tahrirlaysiz?"), reply_markup=edit_profile_kb())
+    await state.set_state(ProfileEdit.field)
+
+
+@router.message(ProfileEdit.field)
+async def edit_profile_field(message: Message, state: FSMContext):
+    text = (message.text or "").strip()
+    mapping = {
+        "Ism-sharif": "full_name",
+        "Telefon": "phone",
+        "Hudud": "region",
+        "Bio": "bio",
+    }
+    if text not in mapping:
+        await message.answer(friendly("Iltimos, tugmalardan birini tanlang."), reply_markup=edit_profile_kb())
+        return
+    await state.update_data(field=mapping[text])
+    await message.answer(friendly("Yangi qiymatni kiriting."))
+    await state.set_state(ProfileEdit.value)
+
+
+@router.message(ProfileEdit.value)
+async def edit_profile_value(message: Message, state: FSMContext, db: Database):
+    value = (message.text or "").strip()
+    if len(value) < 2:
+        await message.answer(friendly("Qiymat juda qisqa. Iltimos, qaytadan kiriting."))
+        return
+    data = await state.get_data()
+    field = data.get("field")
+    if not field:
+        await state.clear()
+        await message.answer(friendly("Noma'lum xatolik. Qaytadan urinib ko'ring."))
+        return
+    await db.update_user_field(message.from_user.id, field, value)
+    await state.clear()
+    await message.answer(friendly("Ma'lumot yangilandi."), reply_markup=main_menu_kb())
