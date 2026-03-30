@@ -97,7 +97,10 @@ async def pick_district(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(
         friendly(f"Hududingiz: {region}, {district}. Endi o'zingizni tanlang:")
     )
-    await callback.message.edit_reply_markup(reply_markup=None)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
     await callback.message.answer(
         friendly(""),
         reply_markup=ReplyKeyboardRemove(),
