@@ -4,7 +4,7 @@ from aiogram.types import Message
 
 from db import Database
 from aiogram import F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, ReplyKeyboardRemove
 
 from keyboards import (
     contact_kb,
@@ -48,6 +48,10 @@ async def onboarding_phone(message: Message, state: FSMContext):
     await state.update_data(phone=message.contact.phone_number)
     await message.answer(
         friendly("Yashash hududingizni tanlang:"),
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    await message.answer(
+        friendly("Hududni tanlash tugmalari pastda chiqadi."),
         reply_markup=regions_kb(),
     )
     await state.set_state(Onboarding.region)
