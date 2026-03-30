@@ -105,6 +105,10 @@ async def pick_district(callback: CallbackQuery, state: FSMContext):
         friendly("Iltimos, o'zingizni tanlang: usta yoki mijoz?"),
         reply_markup=role_select_kb(),
     )
+    await callback.message.answer(
+        friendly("Tugmalar ko‘rinmasa, pastdan tanlang yoki 'usta'/'mijoz' deb yozing."),
+        reply_markup=role_select_kb(),
+    )
     await state.set_state(Onboarding.role)
     await callback.answer()
 
