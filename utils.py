@@ -4,7 +4,7 @@ from aiogram.types import User
 def friendly(text: str) -> str:
     if "😊" in text or "🙂" in text:
         return text
-    return f"{text} 😊\nYordam berishga tayyorman."
+    return f"{text} 😊!"
 
 
 def detect_role(purpose_text: str) -> str:
