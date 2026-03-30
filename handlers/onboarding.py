@@ -59,6 +59,16 @@ async def onboarding_phone(message: Message, state: FSMContext):
 
 @router.message(Onboarding.region)
 async def onboarding_region(message: Message, state: FSMContext):
+    # Fallback: if user typed region manually, allow continuing to role selection
+    text = (message.text or "").strip()
+    if len(text) >= 3:
+        await state.update_data(region=text)
+        await message.answer(
+            friendly("Iltimos, o'zingizni tanlang: usta yoki mijoz?"),
+            reply_markup=role_select_kb(),
+        )
+        await state.set_state(Onboarding.role)
+        return
     await message.answer(friendly("Iltimos, hududni tugmalar orqali tanlang."))
 
 
@@ -87,6 +97,10 @@ async def pick_district(callback: CallbackQuery, state: FSMContext):
         friendly(f"Hududingiz: {region}, {district}. Endi o'zingizni tanlang:")
     )
     await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer(
+        friendly(""),
+        reply_markup=ReplyKeyboardRemove(),
+    )
     await callback.message.answer(
         friendly("Iltimos, o'zingizni tanlang: usta yoki mijoz?"),
         reply_markup=role_select_kb(),
