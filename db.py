@@ -362,6 +362,15 @@ class Database:
                 row = await cur.fetchone()
                 return dict(row) if row else None
 
+    async def delete_user(self, tg_id: int) -> None:
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM users WHERE tg_id = ?", (tg_id,))
+            await db.execute("DELETE FROM ratings WHERE master_tg_id = ? OR from_tg_id = ?", (tg_id, tg_id))
+            await db.execute("DELETE FROM orders WHERE from_tg_id = ? OR to_tg_id = ?", (tg_id, tg_id))
+            await db.execute("DELETE FROM transactions WHERE tg_id = ?", (tg_id,))
+            await db.execute("DELETE FROM chat_sessions WHERE user_a = ? OR user_b = ?", (tg_id, tg_id))
+            await db.commit()
+
     async def get_setting(self, key: str, default: str | None = None) -> str | None:
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute("SELECT value FROM settings WHERE key = ?", (key,)) as cur:

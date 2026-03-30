@@ -152,6 +152,13 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
               </form>
             </div>
             <div class='card'>
+              <h3>Userni o'chirish</h3>
+              <form method='post' action='/delete-user'>
+                <input name='user_id' placeholder='User ID' required />
+                <button type='submit'>O'chirish</button>
+              </form>
+            </div>
+            <div class='card'>
               <h3>Bot rejimi</h3>
               <form method='post' action='/set-paid'>
                 <button type='submit'>Botni pullik qilish</button>
@@ -257,6 +264,11 @@ def build_app(db: Database, config: Config, bot: Bot) -> FastAPI:
     @app.post("/unblock")
     async def unblock(user_id: int = Form(...), _auth: None = Depends(_require_auth)):
         await db.set_blocked(user_id, False)
+        return RedirectResponse("/", status_code=303)
+
+    @app.post("/delete-user")
+    async def delete_user(user_id: int = Form(...), _auth: None = Depends(_require_auth)):
+        await db.delete_user(user_id)
         return RedirectResponse("/", status_code=303)
 
     @app.post("/set-paid")
