@@ -42,6 +42,14 @@ def role_select_kb() -> ReplyKeyboardMarkup:
     return kb.as_markup(resize_keyboard=True, one_time_keyboard=True)
 
 
+def role_inline_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🧑‍🔧 Men ustaman", callback_data="role:usta")
+    builder.button(text="🙋‍♂️ Men mijozman", callback_data="role:mijoz")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def profession_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.row(KeyboardButton(text="Santexnik"), KeyboardButton(text="Elektrik"))

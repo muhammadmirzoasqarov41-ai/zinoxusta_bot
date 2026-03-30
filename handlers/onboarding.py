@@ -10,6 +10,7 @@ from keyboards import (
     contact_kb,
     main_menu_kb,
     role_select_kb,
+    role_inline_kb,
     profession_kb,
     regions_kb,
     districts_kb,
@@ -102,14 +103,34 @@ async def pick_district(callback: CallbackQuery, state: FSMContext):
         reply_markup=ReplyKeyboardRemove(),
     )
     await callback.message.answer(
-        friendly("Iltimos, o'zingizni tanlang: usta yoki mijoz?"),
-        reply_markup=role_select_kb(),
-    )
-    await callback.message.answer(
-        friendly("Tugmalar ko‘rinmasa, pastdan tanlang yoki 'usta'/'mijoz' deb yozing."),
-        reply_markup=role_select_kb(),
+        friendly("Iltimos, o'zingizni tanlang:"),
+        reply_markup=role_inline_kb(),
     )
     await state.set_state(Onboarding.role)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("role:"))
+async def pick_role_inline(callback: CallbackQuery, state: FSMContext):
+    role = callback.data.split(":", 1)[1]
+    if role not in {"usta", "mijoz"}:
+        await callback.answer("Noto'g'ri tanlov. 😊", show_alert=True)
+        return
+    await state.update_data(role=role)
+    if role == "usta":
+        await callback.message.answer(
+            friendly("Kasbingizni tanlang:"),
+            reply_markup=profession_kb(),
+        )
+        await state.set_state(Onboarding.profession)
+    else:
+        await callback.message.answer(
+            friendly(
+                "Botimizga qanday maqsadda tashrif buyurdingiz? "
+                "(Masalan: Menga malakali santexnik kerak yoki Men ustaman, mijoz qidiryapman)"
+            )
+        )
+        await state.set_state(Onboarding.purpose)
     await callback.answer()
 
 
