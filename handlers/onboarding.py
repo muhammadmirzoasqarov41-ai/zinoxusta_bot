@@ -112,9 +112,9 @@ async def pick_district(callback: CallbackQuery, state: FSMContext):
 @router.message(Onboarding.role)
 async def onboarding_role(message: Message, state: FSMContext):
     text = (message.text or "").strip()
-    if text == "🧑‍🔧 Men ustaman":
+    if text == "🧑‍🔧 Men ustaman" or "usta" in text.lower():
         role = "usta"
-    elif text == "🙋‍♂️ Men mijozman":
+    elif text == "🙋‍♂️ Men mijozman" or "mijoz" in text.lower():
         role = "mijoz"
     else:
         await message.answer(
