@@ -52,15 +52,17 @@ PythonAnywhere'da ASGI (FastAPI/uvicorn) hozircha ko'proq **command-line** orqal
 3. Repo:
    - `git clone https://github.com/muhammadmirzoasqarov41-ai/zinoxusta_bot.git`
 4. Virtualenv:
-   - `mkvirtualenv zinoxusta --python=python3.10`
-   - `cd zinoxusta_bot && pip install -r requirements.txt`
+   - `cd zinoxusta_bot`
+   - `python3 -m venv .venv`
+   - `source .venv/bin/activate`
+   - `pip install -r requirements.txt`
 5. `.env` yarating (`~/zinoxusta_bot/.env`):
    - `BOT_TOKEN=...`
    - `WEBHOOK_ENABLED=true`
    - `WEBHOOK_BASE_URL=https://<username>.pythonanywhere.com` (EU bo'lsa: `https://<username>.eu.pythonanywhere.com`)
    - `WEBHOOK_PATH=/tg/<secret>`
 6. ASGI website yaratish:
-   - `pa website create --domain <username>.pythonanywhere.com --command '/home/<username>/.virtualenvs/zinoxusta/bin/uvicorn --app-dir /home/<username>/zinoxusta_bot --uds ${DOMAIN_SOCKET} asgi_app:app'`
+   - `pa website create --domain <username>.pythonanywhere.com --command '/home/<username>/zinoxusta_bot/.venv/bin/uvicorn --app-dir /home/<username>/zinoxusta_bot --uds ${DOMAIN_SOCKET} asgi_app:app'`
 7. Reload (kod o'zgarsa):
    - `pa website reload --domain <username>.pythonanywhere.com`
 8. Tekshiruv:

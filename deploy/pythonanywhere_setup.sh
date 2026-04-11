@@ -3,7 +3,6 @@ set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/muhammadmirzoasqarov41-ai/zinoxusta_bot.git}"
 APP_DIR="${APP_DIR:-$HOME/zinoxusta_bot}"
-VENV_NAME="${VENV_NAME:-zinoxusta}"
 
 # Set this if you're on the EU system, for example:
 #   PA_DOMAIN="<username>.eu.pythonanywhere.com"
@@ -11,6 +10,7 @@ PA_DOMAIN="${PA_DOMAIN:-$USER.pythonanywhere.com}"
 
 echo "1) Install/upgrade PythonAnywhere CLI (pa)"
 python3 -m pip install --upgrade --user pythonanywhere >/dev/null
+export PATH="$HOME/.local/bin:$PATH"
 
 echo "2) Clone/pull repo"
 if [[ -d "${APP_DIR}/.git" ]]; then
@@ -21,18 +21,13 @@ fi
 
 cd "${APP_DIR}"
 
-echo "3) Create virtualenv (if needed)"
-if ! command -v mkvirtualenv >/dev/null 2>&1; then
-  echo "mkvirtualenv not found. Install virtualenvwrapper first (PythonAnywhere docs), then re-run."
-  exit 1
+echo "3) Create venv + install deps"
+if [[ ! -d ".venv" ]]; then
+  python3 -m venv .venv
 fi
-
-if ! ls "$HOME/.virtualenvs" 2>/dev/null | rg -q "^${VENV_NAME}\$"; then
-  mkvirtualenv "${VENV_NAME}" --python=python3.10
-fi
-
-echo "4) Install dependencies"
-workon "${VENV_NAME}"
+# shellcheck disable=SC1091
+source .venv/bin/activate
+pip install --upgrade pip >/dev/null
 pip install -r requirements.txt >/dev/null
 
 echo "5) Write .env (only stored on your account)"
@@ -56,8 +51,9 @@ WEBHOOK_BASE_URL=https://${PA_DOMAIN}
 WEBHOOK_PATH=${WEBHOOK_PATH}
 EOF
 
-echo "6) Create ASGI website (if it already exists, delete/recreate or use reload)"
-pa website create --domain "${PA_DOMAIN}" --command "/home/${USER}/.virtualenvs/${VENV_NAME}/bin/uvicorn --app-dir /home/${USER}/$(basename "${APP_DIR}") --uds \${DOMAIN_SOCKET} asgi_app:app"
+echo "6) Create/reload ASGI website"
+UVICORN_CMD="${APP_DIR}/.venv/bin/uvicorn --app-dir ${APP_DIR} --uds \${DOMAIN_SOCKET} asgi_app:app"
+pa website create --domain "${PA_DOMAIN}" --command "${UVICORN_CMD}" || pa website reload --domain "${PA_DOMAIN}"
 
 echo "OK. Open:"
 echo "  https://${PA_DOMAIN}/health"
