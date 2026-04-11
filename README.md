@@ -66,6 +66,10 @@ PythonAnywhere'da ASGI (FastAPI/uvicorn) hozircha ko'proq **command-line** orqal
 8. Tekshiruv:
    - `https://<username>.pythonanywhere.com/health` → `{"ok": true}`
 
+Tezkor script:
+- Bash console ichida: `bash deploy/pythonanywhere_setup.sh`
+- (EU bo'lsa) oldindan: `export PA_DOMAIN="<username>.eu.pythonanywhere.com"`
+
 ## Eslatma
 - Ma'lumotlar bazasi `SQLite` (`DB_PATH`) orqali saqlanadi.
 - Yangi foydalanuvchiga ro'yxatdan o'tganda 10 ta olmos beriladi.
