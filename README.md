@@ -10,11 +10,36 @@
 ## Railway deploy
 - Railway projektida `BOT_TOKEN` (va ixtiyoriy `ADMIN_ID`, `ADMIN_USERNAME`, `DB_PATH`) env qiymatlarini kiriting.
 - Start command sifatida `python main.py` yoki `Procfile` foydalaning.
- - Web panel uchun `WEB_ENABLED=true`, `WEB_USER`, `WEB_PASS`, `WEB_PORT` qiymatlarini kiriting.
+ - Web panel uchun `WEB_ENABLED=true`, `WEB_USER`, `WEB_PASS`, `WEB_PORT` qiymatlarini kiriting (default: o'chirilgan).
 
 ## Admin panel
 - Admin sifatida kirish uchun `ADMIN_ID` yoki `ADMIN_USERNAME` ni sozlang.
 - Admin buyruq: `/admin`.
+
+## VPS deploy (Oracle Always Free / boshqa VPS)
+1. VPS (Ubuntu) oling, serverga kiring (`ssh`).
+2. Docker o'rnating:
+   - `sudo apt update && sudo apt -y install ca-certificates curl git`
+   - `curl -fsSL https://get.docker.com | sudo sh`
+   - `sudo usermod -aG docker $USER` (so'ng `exit` qilib qayta kiring)
+3. Repo:
+   - `git clone <repo_url> ustaqidir && cd ustaqidir`
+4. Environment:
+   - `cp .env.example .env`
+   - `.env` ichida `BOT_TOKEN` ni kiriting (ixtiyoriy: `ADMIN_ID`, `ADMIN_USERNAME`).
+5. Run:
+   - `mkdir -p data`
+   - `docker compose up -d --build`
+6. Log:
+   - `docker compose logs -f`
+
+SQLite DB Docker ichida `/data/ustaqidir.db` bo'ladi (hostda `./data/ustaqidir.db`).
+
+Tezkor auto-deploy uchun: `deploy/bootstrap_ubuntu.sh` (VPS ichida `REPO_URL=... BOT_TOKEN=... bash deploy/bootstrap_ubuntu.sh`).
+
+Web panel kerak bo'lsa:
+- `.env` da `WEB_ENABLED=true` qiling.
+- `docker-compose.yml` dagi `ports:` ni public qilish uchun `127.0.0.1:` qismini olib tashlang.
 
 ## Eslatma
 - Ma'lumotlar bazasi `SQLite` (`DB_PATH`) orqali saqlanadi.

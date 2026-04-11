@@ -42,7 +42,7 @@ def load_config() -> Config:
     web_host = os.getenv("WEB_HOST", "0.0.0.0").strip()
     web_port_raw = os.getenv("WEB_PORT", "8000").strip()
     web_port = int(web_port_raw) if web_port_raw.isdigit() else 8000
-    web_enabled = os.getenv("WEB_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+    web_enabled = os.getenv("WEB_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 
     return Config(
         bot_token=bot_token,

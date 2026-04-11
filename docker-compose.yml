@@ -1,0 +1,17 @@
+services:
+  ustaqidir-bot:
+    build: .
+    container_name: ustaqidir-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=/data/ustaqidir.db
+    volumes:
+      - ./data:/data
+    # Web panel kerak bo'lsa:
+    # - WEB_ENABLED=true
+    # - WEB_PORT=8000
+    # Portni public qilish uchun 127.0.0.1 ni olib tashlang.
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8000}:${WEB_PORT:-8000}"
