@@ -20,6 +20,9 @@ class Config:
     web_host: str
     web_port: int
     web_enabled: bool
+    webhook_enabled: bool
+    webhook_base_url: str
+    webhook_path: str
 
 
 def load_config() -> Config:
@@ -44,6 +47,17 @@ def load_config() -> Config:
     web_port = int(web_port_raw) if web_port_raw.isdigit() else 8000
     web_enabled = os.getenv("WEB_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 
+    webhook_enabled = os.getenv("WEBHOOK_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    webhook_base_url = os.getenv("WEBHOOK_BASE_URL", "").strip().rstrip("/")
+    webhook_path = os.getenv("WEBHOOK_PATH", "").strip()
+    if webhook_enabled:
+        if not webhook_base_url:
+            raise RuntimeError("WEBHOOK_BASE_URL is required when WEBHOOK_ENABLED=true")
+        if not webhook_path:
+            raise RuntimeError("WEBHOOK_PATH is required when WEBHOOK_ENABLED=true")
+        if not webhook_path.startswith("/"):
+            raise RuntimeError("WEBHOOK_PATH must start with '/'")
+
     return Config(
         bot_token=bot_token,
         admin_id=admin_id,
@@ -54,4 +68,7 @@ def load_config() -> Config:
         web_host=web_host,
         web_port=web_port,
         web_enabled=web_enabled,
+        webhook_enabled=webhook_enabled,
+        webhook_base_url=webhook_base_url,
+        webhook_path=webhook_path,
     )

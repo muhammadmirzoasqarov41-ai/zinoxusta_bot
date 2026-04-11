@@ -41,6 +41,23 @@ Web panel kerak bo'lsa:
 - `.env` da `WEB_ENABLED=true` qiling.
 - `docker-compose.yml` dagi `ports:` ni public qilish uchun `127.0.0.1:` qismini olib tashlang.
 
+## PythonAnywhere deploy (karta bo'lmasligi mumkin)
+PythonAnywhere'da **polling emas**, webhook bilan ishlatamiz.
+
+1. PythonAnywhere account oching va repo'ni clone qiling.
+2. Virtualenv va paketlar:
+   - `pip install -r requirements.txt`
+3. `.env` (yoki Web tab → Environment variables) qo'ying:
+   - `BOT_TOKEN=...`
+   - `WEBHOOK_ENABLED=true`
+   - `WEBHOOK_BASE_URL=https://<username>.pythonanywhere.com`
+   - `WEBHOOK_PATH=/tg/<secret>`
+   - (ixtiyoriy) `WEB_ENABLED=true` (admin panel)
+4. Web tab → **Add a new web app** → **ASGI**:
+   - Uvicorn command: `uvicorn asgi_app:app --host 0.0.0.0 --port 8000`
+5. Tekshiruv:
+   - `https://<username>.pythonanywhere.com/health` ochilib `{"ok": true}` chiqishi kerak.
+
 ## Eslatma
 - Ma'lumotlar bazasi `SQLite` (`DB_PATH`) orqali saqlanadi.
 - Yangi foydalanuvchiga ro'yxatdan o'tganda 10 ta olmos beriladi.
