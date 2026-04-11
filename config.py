@@ -1,10 +1,12 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 try:
     from dotenv import load_dotenv
 
     load_dotenv()
+    load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env", override=False)
 except Exception:
     pass
 

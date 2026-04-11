@@ -42,21 +42,29 @@ Web panel kerak bo'lsa:
 - `docker-compose.yml` dagi `ports:` ni public qilish uchun `127.0.0.1:` qismini olib tashlang.
 
 ## PythonAnywhere deploy (karta bo'lmasligi mumkin)
-PythonAnywhere'da **polling emas**, webhook bilan ishlatamiz.
+PythonAnywhere free'da polling 24/7 ishlashi qiyin, shuning uchun **webhook** ishlatamiz.
+PythonAnywhere'da ASGI (FastAPI/uvicorn) hozircha ko'proq **command-line** orqali sozlanadi.
 
-1. PythonAnywhere account oching va repo'ni clone qiling.
-2. Virtualenv va paketlar:
-   - `pip install -r requirements.txt`
-3. `.env` (yoki Web tab → Environment variables) qo'ying:
+1. API token yarating:
+   - PythonAnywhere → Account → API token → Create
+2. Bash console oching va `pa` tool o'rnating:
+   - `pip install --upgrade pythonanywhere`
+3. Repo:
+   - `git clone https://github.com/muhammadmirzoasqarov41-ai/zinoxusta_bot.git`
+4. Virtualenv:
+   - `mkvirtualenv zinoxusta --python=python3.10`
+   - `cd zinoxusta_bot && pip install -r requirements.txt`
+5. `.env` yarating (`~/zinoxusta_bot/.env`):
    - `BOT_TOKEN=...`
    - `WEBHOOK_ENABLED=true`
-   - `WEBHOOK_BASE_URL=https://<username>.pythonanywhere.com`
+   - `WEBHOOK_BASE_URL=https://<username>.pythonanywhere.com` (EU bo'lsa: `https://<username>.eu.pythonanywhere.com`)
    - `WEBHOOK_PATH=/tg/<secret>`
-   - (ixtiyoriy) `WEB_ENABLED=true` (admin panel)
-4. Web tab → **Add a new web app** → **ASGI**:
-   - Uvicorn command: `uvicorn asgi_app:app --host 0.0.0.0 --port 8000`
-5. Tekshiruv:
-   - `https://<username>.pythonanywhere.com/health` ochilib `{"ok": true}` chiqishi kerak.
+6. ASGI website yaratish:
+   - `pa website create --domain <username>.pythonanywhere.com --command '/home/<username>/.virtualenvs/zinoxusta/bin/uvicorn --app-dir /home/<username>/zinoxusta_bot --uds ${DOMAIN_SOCKET} asgi_app:app'`
+7. Reload (kod o'zgarsa):
+   - `pa website reload --domain <username>.pythonanywhere.com`
+8. Tekshiruv:
+   - `https://<username>.pythonanywhere.com/health` → `{"ok": true}`
 
 ## Eslatma
 - Ma'lumotlar bazasi `SQLite` (`DB_PATH`) orqali saqlanadi.
