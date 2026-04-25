@@ -1,4 +1,5 @@
 import asyncio
+
 import logging
 
 from aiogram import Bot, Dispatcher
@@ -8,7 +9,7 @@ from aiogram.enums import ParseMode
 from config import load_config
 from db import Database
 from middleware import LastSeenMiddleware
-from handlers import admin, callbacks, menu, onboarding, start, chat
+from handlers import admin, callbacks, menu, onboarding, start, chat, ai_chat
 from webapp import build_app
 
 
@@ -34,6 +35,7 @@ async def main() -> None:
     dp.include_router(callbacks.router)
     dp.include_router(admin.router)
     dp.include_router(chat.router)
+    dp.include_router(ai_chat.router)
 
     if config.web_enabled:
         import uvicorn

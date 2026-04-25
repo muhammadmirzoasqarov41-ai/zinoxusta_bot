@@ -25,6 +25,8 @@ class Config:
     webhook_enabled: bool
     webhook_base_url: str
     webhook_path: str
+    groq_api_key: str | None
+    groq_model: str
 
 
 def load_config() -> Config:
@@ -60,6 +62,9 @@ def load_config() -> Config:
         if not webhook_path.startswith("/"):
             raise RuntimeError("WEBHOOK_PATH must start with '/'")
 
+    groq_api_key = os.getenv("GROQ_API_KEY", "").strip() or None
+    groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip()
+
     return Config(
         bot_token=bot_token,
         admin_id=admin_id,
@@ -73,4 +78,6 @@ def load_config() -> Config:
         webhook_enabled=webhook_enabled,
         webhook_base_url=webhook_base_url,
         webhook_path=webhook_path,
+        groq_api_key=groq_api_key,
+        groq_model=groq_model,
     )

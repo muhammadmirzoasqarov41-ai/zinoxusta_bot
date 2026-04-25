@@ -8,6 +8,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     kb.row(KeyboardButton(text="🔎 Usta qidirish"), KeyboardButton(text="⭐️ Ustani baholash"))
     kb.row(KeyboardButton(text="📜 Tarixim"), KeyboardButton(text="📥 So'rovlar"))
     kb.row(KeyboardButton(text="🚪 Chatni yakunlash"))
+    kb.row(KeyboardButton(text="🤖 AI Yordamchi"))
     kb.row(KeyboardButton(text="🎁 Olmos ishlash"))
     kb.row(KeyboardButton(text="🛠 Usta xizmatlari"), KeyboardButton(text="💎 Olmos balansim"))
     kb.row(KeyboardButton(text="✏️ Profilni tahrirlash"), KeyboardButton(text="💎 Olmos sotib olish"))
@@ -32,6 +33,13 @@ def usta_services_kb() -> ReplyKeyboardMarkup:
 def back_to_main_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.row(KeyboardButton(text="⬅️ Orqaga"))
+    return kb.as_markup(resize_keyboard=True)
+
+
+def ai_chat_kb() -> ReplyKeyboardMarkup:
+    kb = ReplyKeyboardBuilder()
+    kb.row(KeyboardButton(text="🔄 AI Suhbatini tozalash"))
+    kb.row(KeyboardButton(text="🚪 AI Chatdan chiqish"))
     return kb.as_markup(resize_keyboard=True)
 
 
