@@ -35,6 +35,7 @@ async def main() -> None:
     dp.include_router(callbacks.router)
     dp.include_router(admin.router)
     dp.include_router(chat.router)
+    # AI chat router should be last to catch remaining messages
     dp.include_router(ai_chat.router)
 
     if config.web_enabled:

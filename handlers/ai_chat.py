@@ -11,16 +11,23 @@ import asyncio
 
 router = Router()
 
+# Simple state management for AI conversations
+active_ai_users = set()
+
 
 @router.message(F.text == "🤖 AI Yordamchi")
-async def start_ai_chat(message: Message, db: Database):
+async def start_ai_chat(message: Message):
     """AI yordamchi bilan suhbatni boshlash"""
     user_id = message.from_user.id
+    
+    print(f"🔍 AI Chat requested by user {user_id}")
     
     # AI agentni olish
     try:
         ai_agent = await get_ai_agent()
         await ai_agent.start_conversation(user_id)
+        active_ai_users.add(user_id)  # Add to active users
+        print(f"✅ AI conversation started for user {user_id}")
         
         await message.answer(
             friendly("🤖 **AI Yordamchi**\n\n"
@@ -43,13 +50,14 @@ async def start_ai_chat(message: Message, db: Database):
 
 
 @router.message(F.text == "🔄 AI Suhbatini tozalash")
-async def clear_ai_chat(message: Message, db: Database):
+async def clear_ai_chat(message: Message):
     """AI suhbatini tozalash"""
     user_id = message.from_user.id
     
     try:
         ai_agent = await get_ai_agent()
         await ai_agent.clear_conversation(user_id)
+        active_ai_users.discard(user_id)  # Remove from active users
         
         await message.answer(
             friendly("🔄 AI suhbat muvaffaqiyatli tozalandi. Yangi suhbat boshlash uchun "
@@ -74,17 +82,20 @@ async def exit_ai_chat(message: Message):
 
 
 @router.message(F.text)
-async def handle_ai_message(message: Message, db: Database):
+async def handle_ai_message(message: Message):
     """AI ga yuborilgan xabarlarni qayta ishlash"""
     user_id = message.from_user.id
     user_message = message.text
+    
+    print(f"🔍 Message received from user {user_id}: {user_message}")
     
     # Asosiy menyuni tekshirish - agar asosiy menyudagi tugmalar bo'lsa, AI emas
     main_menu_buttons = [
         "🧑‍🔧 Ustalar ro'yxati", "🚨 Shoshilinch chaqiruv", "🔎 Usta qidirish", 
         "⭐️ Ustani baholash", "📜 Tarixim", "📥 So'rovlar", "🚪 Chatni yakunlash",
         "🎁 Olmos ishlash", "🛠 Usta xizmatlari", "💎 Olmos balansim",
-        "✏️ Profilni tahrirlash", "💎 Olmos sotib olish", "ℹ️ Bot haqida", "❓ Yordam"
+        "✏️ Profilni tahrirlash", "💎 Olmos sotib olish", "ℹ️ Bot haqida", "❓ Yordam",
+        "🤖 AI Yordamchi"  # AI button ni ham qo'shish
     ]
     
     # AI chat tugmalarini tekshirish
@@ -92,21 +103,28 @@ async def handle_ai_message(message: Message, db: Database):
     
     # Agar asosiy menyu yoki AI chat tugmalari bo'lsa, AI ga yubormaslik
     if user_message in main_menu_buttons or user_message in ai_chat_buttons:
+        print(f"🚫 Message filtered: {user_message}")
         return
     
     # Faqat AI chat rejimida ishlash
     try:
         ai_agent = await get_ai_agent()
         
-        # Faol suhbat borligini tekshirish
-        if not await ai_agent.is_active_conversation(user_id):
+        # Faol suhbat borligini tekshirish - local state dan foydalanamiz
+        is_active = user_id in active_ai_users
+        print(f"🔍 Active conversation for user {user_id}: {is_active}")
+        
+        if not is_active:
+            print(f"🚫 No active conversation for user {user_id}")
             return
             
         # Typing indicator yuborish
         await message.bot.send_chat_action(chat_id=user_id, action="typing")
         
         # AI dan javob olish
+        print(f"🤖 Getting AI response for user {user_id}")
         response = await ai_agent.get_response(user_id, user_message)
+        print(f"✅ AI response for user {user_id}: {response[:50]}...")
         
         await message.answer(
             friendly(f"🤖 **AI Yordamchi:**\n\n{response}"),
