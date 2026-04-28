@@ -1,3 +1,4 @@
+
 import asyncio
 
 import logging
@@ -9,7 +10,7 @@ from aiogram.enums import ParseMode
 from config import load_config
 from db import Database
 from middleware import LastSeenMiddleware
-from handlers import admin, callbacks, menu, onboarding, start, chat, ai_chat
+from handlers import admin, admin_enhanced, callbacks, menu, onboarding, start, chat, ai_chat
 from webapp import build_app
 
 
@@ -34,6 +35,7 @@ async def main() -> None:
     dp.include_router(menu.router)
     dp.include_router(callbacks.router)
     dp.include_router(admin.router)
+    dp.include_router(admin_enhanced.router)
     dp.include_router(chat.router)
     # AI chat router should be last to catch remaining messages
     dp.include_router(ai_chat.router)

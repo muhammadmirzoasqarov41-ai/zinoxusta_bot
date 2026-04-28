@@ -159,6 +159,7 @@ def urgent_confirm_kb() -> InlineKeyboardMarkup:
 
 def admin_menu_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
+    kb.row(KeyboardButton(text="🔧 Enhanced Admin Panel"))
     kb.row(KeyboardButton(text="➕ Olmos qo'shish"), KeyboardButton(text="➖ Olmos ayirish"))
     kb.row(KeyboardButton(text="💎 Barcha userlarga olmos"))
     kb.row(KeyboardButton(text="👤 ID orqali xabar"))

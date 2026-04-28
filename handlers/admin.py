@@ -319,6 +319,18 @@ async def set_paid_mode(message: Message, db: Database, config: Config):
     await message.answer(friendly("Bot rejimi: PULLIK. Endi xizmatlar olmos yechadi."))
 
 
+@router.message(lambda m: m.text == "🔧 Enhanced Admin Panel")
+async def admin_enhanced_panel(message: Message, config: Config):
+    if not is_admin(message.from_user, config.admin_id, config.admin_username):
+        await message.answer(friendly("❌ Access denied. This command is for administrators only."))
+        return
+    
+    from handlers.admin_enhanced import enhanced_admin_menu_kb
+    await message.answer(
+        friendly("🔧 **Enhanced Admin Panel**\n\nWelcome to the comprehensive admin management system."),
+        reply_markup=enhanced_admin_menu_kb()
+    )
+
 @router.message(lambda m: m.text == "⬅️ Orqaga")
 async def admin_back(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
