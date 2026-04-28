@@ -5,6 +5,8 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.enums import ParseMode
 from aiogram.types import InlineKeyboardMarkup
+import aiosqlite
+from datetime import datetime
 
 from config import Config
 from db import Database
@@ -73,6 +75,7 @@ async def admin_users_menu(callback: CallbackQuery, config: Config):
     builder.button(text="🚫 Blocked Users", callback_data="admin:blocked_users")
     builder.button(text="⭐ Top Users", callback_data="admin:top_users")
     builder.button(text="📈 Active Users", callback_data="admin:active_users")
+    builder.button(text="📊 User Statistics", callback_data="admin:user_stats")
     builder.button(text="⬅️ Back", callback_data="admin:menu")
     builder.adjust(2)
     
@@ -80,6 +83,58 @@ async def admin_users_menu(callback: CallbackQuery, config: Config):
         friendly("👥 **User Management**\n\nChoose user management option:"),
         reply_markup=builder.as_markup()
     )
+
+@router.callback_query(lambda c: c.data == "admin:user_stats")
+async def admin_user_statistics(callback: CallbackQuery, db: Database, config: Config):
+    if not is_admin(callback.from_user, config.admin_id, config.admin_username):
+        await callback.answer("❌ Access denied")
+        return
+    
+    # Get user statistics
+    total_users = await db.get_total_users_count()
+    
+    # Get detailed statistics
+    async with aiosqlite.connect(db.db_path) as conn:
+        await conn.execute("SELECT COUNT(*) as count FROM users WHERE is_blocked = 0")
+        active_users = (await conn.fetchone())['count']
+        
+        await conn.execute("SELECT COUNT(*) as count FROM users WHERE is_blocked = 1")
+        blocked_users = (await conn.fetchone())['count']
+        
+        await conn.execute("SELECT COUNT(*) as count FROM users WHERE diamonds > 0")
+        users_with_diamonds = (await conn.fetchone())['count']
+        
+        await conn.execute("SELECT COUNT(*) as count FROM users WHERE role = 'usta'")
+        masters_count = (await conn.fetchone())['count']
+        
+        await conn.execute("SELECT COUNT(*) as count FROM users WHERE role = 'mijoz'")
+        clients_count = (await conn.fetchone())['count']
+        
+        # Get today's new users
+        today = datetime.now().date()
+        await conn.execute("SELECT COUNT(*) as count FROM users WHERE DATE(created_at) = ?", (today,))
+        today_users = (await conn.fetchone())['count']
+    
+    text = friendly(
+        f"📊 **User Statistics**\n\n"
+        f"👥 Total Users: {total_users}\n"
+        f"✅ Active Users: {active_users}\n"
+        f"🚫 Blocked Users: {blocked_users}\n"
+        f"💎 Users with Diamonds: {users_with_diamonds}\n"
+        f"🔧 Masters: {masters_count}\n"
+        f"👤 Clients: {clients_count}\n"
+        f"📅 Today's New Users: {today_users}\n\n"
+        f"📈 Active Rate: {(active_users/total_users*100):.1f}%\n"
+        f"🚫 Block Rate: {(blocked_users/total_users*100):.1f}%"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📋 User List", callback_data="admin:user_list")
+    builder.button(text="🔍 Search User", callback_data="admin:user_search")
+    builder.button(text="⬅️ Back", callback_data="admin:users")
+    builder.adjust(2)
+    
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
 @router.callback_query(lambda c: c.data == "admin:user_search")
 async def admin_user_search(callback: CallbackQuery, state: FSMContext, config: Config):
@@ -117,6 +172,86 @@ async def admin_search_user(message: Message, state: FSMContext, db: Database, c
     
     await message.answer(
         friendly(f"📋 **Search Results**\n\nFound {len(users)} users:"),
+        reply_markup=builder.as_markup()
+    )
+
+@router.callback_query(lambda c: c.data == "admin:user_list")
+async def admin_user_list(callback: CallbackQuery, db: Database, config: Config):
+    if not is_admin(callback.from_user, config.admin_id, config.admin_username):
+        await callback.answer("❌ Access denied")
+        return
+    
+    # Get all users with pagination
+    users = await db.get_all_users(limit=20, offset=0)
+    total_users = await db.get_total_users_count()
+    
+    # Create user list text
+    user_list_text = "📋 **All Users**\n\n"
+    for i, user in enumerate(users, 1):
+        status = "🚫" if user.get('is_blocked') else "✅"
+        diamonds = user.get('diamonds', 0)
+        name = user.get('name', 'Unknown')
+        user_id = user.get('tg_id')
+        user_list_text += f"{i}. {status} {name} (ID: {user_id}) - 💎{diamonds}\n"
+    
+    user_list_text += f"\n📊 Total: {total_users} users"
+    
+    # Create navigation buttons
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔍 Search User", callback_data="admin:user_search")
+    builder.button(text="📊 User Statistics", callback_data="admin:user_stats")
+    builder.button(text="⬅️ Back", callback_data="admin:users")
+    
+    # Add pagination if needed
+    if total_users > 20:
+        builder.button(text="➡️ Next Page", callback_data="admin:user_list:1")
+    
+    builder.adjust(2, 1)
+    
+    await callback.message.edit_text(
+        friendly(user_list_text),
+        reply_markup=builder.as_markup()
+    )
+
+@router.callback_query(lambda c: c.data.startswith("admin:user_list:"))
+async def admin_user_list_page(callback: CallbackQuery, db: Database, config: Config):
+    if not is_admin(callback.from_user, config.admin_id, config.admin_username):
+        await callback.answer("❌ Access denied")
+        return
+    
+    page = int(callback.data.split(":")[-1])
+    offset = page * 20
+    users = await db.get_all_users(limit=20, offset=offset)
+    total_users = await db.get_total_users_count()
+    
+    # Create user list text
+    user_list_text = f"📋 **All Users - Page {page + 1}**\n\n"
+    for i, user in enumerate(users, offset + 1):
+        status = "🚫" if user.get('is_blocked') else "✅"
+        diamonds = user.get('diamonds', 0)
+        name = user.get('name', 'Unknown')
+        user_id = user.get('tg_id')
+        user_list_text += f"{i}. {status} {name} (ID: {user_id}) - 💎{diamonds}\n"
+    
+    user_list_text += f"\n📊 Total: {total_users} users"
+    
+    # Create navigation buttons
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🔍 Search User", callback_data="admin:user_search")
+    builder.button(text="📊 User Statistics", callback_data="admin:user_stats")
+    
+    # Pagination buttons
+    if page > 0:
+        builder.button(text="⬅️ Previous", callback_data=f"admin:user_list:{page-1}")
+    
+    if offset + 20 < total_users:
+        builder.button(text="➡️ Next", callback_data=f"admin:user_list:{page+1}")
+    
+    builder.button(text="⬅️ Back", callback_data="admin:users")
+    builder.adjust(2, 2, 1)
+    
+    await callback.message.edit_text(
+        friendly(user_list_text),
         reply_markup=builder.as_markup()
     )
 

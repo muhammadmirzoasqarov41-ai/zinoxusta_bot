@@ -1,6 +1,6 @@
 import aiosqlite
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, List
 
 ISO_FMT = "%Y-%m-%dT%H:%M:%S"
 
@@ -270,19 +270,37 @@ class Database:
             until = (datetime.utcnow() + timedelta(days=days)).strftime(ISO_FMT)
         await self.update_user_field(tg_id, "vip_until", until)
 
-    async def stats(self) -> dict[str, int]:
+    async def stats(self) -> dict:
         async with aiosqlite.connect(self.db_path) as db:
-            async with db.execute("SELECT COUNT(*) FROM users") as cur:
-                total_users = (await cur.fetchone())[0]
-            async with db.execute("SELECT COALESCE(SUM(diamonds_spent), 0) FROM users") as cur:
-                total_spent = (await cur.fetchone())[0]
-            async with db.execute("SELECT COALESCE(SUM(diamonds), 0) FROM users") as cur:
-                total_balance = (await cur.fetchone())[0]
-        return {
-            "total_users": int(total_users),
-            "total_spent": int(total_spent),
-            "total_balance": int(total_balance),
-        }
+            await db.execute("SELECT COUNT(*) as total_users FROM users")
+            total_users = (await db.fetchone())["total_users"]
+            
+            await db.execute("SELECT COALESCE(SUM(diamonds), 0) as total_balance FROM users")
+            total_balance = (await db.fetchone())["total_balance"]
+            
+            await db.execute("SELECT COALESCE(SUM(amount), 0) as total_spent FROM diamond_transactions WHERE amount < 0")
+            total_spent = abs((await db.fetchone())["total_spent"])
+            
+            return {"total_users": total_users, "total_balance": total_balance, "total_spent": total_spent}
+    
+    async def get_all_users(self, limit: int = 50, offset: int = 0) -> List[dict]:
+        """Get all users with pagination"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                "SELECT tg_id, name, phone, region, diamonds, is_blocked, created_at, updated_at "
+                "FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset)
+            )
+            rows = await db.fetchall()
+            return [dict(row) for row in rows]
+    
+    async def get_total_users_count(self) -> int:
+        """Get total count of users"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("SELECT COUNT(*) as count FROM users")
+            result = await db.fetchone()
+            return result["count"]
+
     async def list_masters_by_profession(self, profession: str, limit: int = 10, offset: int = 0) -> list[dict[str, Any]]:
         now = datetime.utcnow().strftime(ISO_FMT)
         async with aiosqlite.connect(self.db_path) as db:
