@@ -286,19 +286,20 @@ class Database:
     async def get_all_users(self, limit: int = 50, offset: int = 0) -> List[dict]:
         """Get all users with pagination"""
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute(
-                "SELECT tg_id, name, phone, region, diamonds, is_blocked, created_at, updated_at "
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT tg_id, full_name, phone, region, diamonds, is_blocked, created_at, last_seen "
                 "FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?",
                 (limit, offset)
             )
-            rows = await db.fetchall()
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
     
     async def get_total_users_count(self) -> int:
         """Get total count of users"""
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("SELECT COUNT(*) as count FROM users")
-            result = await db.fetchone()
+            cursor = await db.execute("SELECT COUNT(*) as count FROM users")
+            result = await cursor.fetchone()
             return result["count"]
 
     async def list_masters_by_profession(self, profession: str, limit: int = 10, offset: int = 0) -> list[dict[str, Any]]:

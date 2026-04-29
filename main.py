@@ -8,7 +8,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from config import load_config
-from db import Database
+from db_factory import get_database
 from middleware import LastSeenMiddleware
 from handlers import admin, admin_enhanced, callbacks, menu, onboarding, start, chat, ai_chat
 from webapp import build_app
@@ -24,7 +24,7 @@ async def main() -> None:
     )
     dp = Dispatcher()
 
-    db = Database(config.db_path)
+    db = get_database()
     await db.init()
 
     dp.message.middleware(LastSeenMiddleware())

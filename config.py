@@ -27,6 +27,10 @@ class Config:
     webhook_path: str
     groq_api_key: str | None
     groq_model: str
+    db_type: str
+    firebase_project_id: str | None
+    firebase_private_key: str | None
+    firebase_client_email: str | None
 
 
 def load_config() -> Config:
@@ -65,6 +69,12 @@ def load_config() -> Config:
     groq_api_key = os.getenv("GROQ_API_KEY", "").strip() or None
     groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip()
 
+    # Firebase configuration
+    db_type = os.getenv("DB_TYPE", "sqlite").strip()
+    firebase_project_id = os.getenv("FIREBASE_PROJECT_ID", "").strip() or None
+    firebase_private_key = os.getenv("FIREBASE_PRIVATE_KEY", "").strip() or None
+    firebase_client_email = os.getenv("FIREBASE_CLIENT_EMAIL", "").strip() or None
+
     return Config(
         bot_token=bot_token,
         admin_id=admin_id,
@@ -80,4 +90,8 @@ def load_config() -> Config:
         webhook_path=webhook_path,
         groq_api_key=groq_api_key,
         groq_model=groq_model,
+        db_type=db_type,
+        firebase_project_id=firebase_project_id,
+        firebase_private_key=firebase_private_key,
+        firebase_client_email=firebase_client_email,
     )

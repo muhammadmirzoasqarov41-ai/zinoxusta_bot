@@ -12,17 +12,17 @@ class EnhancedDatabase:
         async with aiosqlite.connect(self.db_path) as db:
             if search_term.isdigit():
                 # Search by ID
-                await db.execute(
+                cursor = await db.execute(
                     "SELECT * FROM users WHERE tg_id = ?",
                     (int(search_term),)
                 )
             else:
                 # Search by username or phone
-                await db.execute(
-                    "SELECT * FROM users WHERE name LIKE ? OR phone LIKE ?",
+                cursor = await db.execute(
+                    "SELECT * FROM users WHERE full_name LIKE ? OR phone LIKE ?",
                     (f"%{search_term}%", f"%{search_term}%")
                 )
-            rows = await db.fetchall()
+            rows = await cursor.fetchall()
             return [dict(row) for row in rows]
     
     async def get_user_stats(self, user_id: int) -> Dict:

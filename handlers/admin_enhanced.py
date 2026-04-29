@@ -164,7 +164,7 @@ async def admin_search_user(message: Message, state: FSMContext, db: Database, c
     
     builder = InlineKeyboardBuilder()
     for user in users[:10]:  # Limit to 10 results
-        user_info = f"{user.get('name', 'Unknown')} (ID: {user.get('tg_id')})"
+        user_info = f"{user.get('full_name', 'Unknown')} (ID: {user.get('tg_id')})"
         builder.button(text=user_info, callback_data=f"admin:user_detail:{user.get('tg_id')}")
     
     builder.button(text="⬅️ Back", callback_data="admin:users")
@@ -190,7 +190,7 @@ async def admin_user_list(callback: CallbackQuery, db: Database, config: Config)
     for i, user in enumerate(users, 1):
         status = "🚫" if user.get('is_blocked') else "✅"
         diamonds = user.get('diamonds', 0)
-        name = user.get('name', 'Unknown')
+        name = user.get('full_name', 'Unknown')
         user_id = user.get('tg_id')
         user_list_text += f"{i}. {status} {name} (ID: {user_id}) - 💎{diamonds}\n"
     
@@ -229,7 +229,7 @@ async def admin_user_list_page(callback: CallbackQuery, db: Database, config: Co
     for i, user in enumerate(users, offset + 1):
         status = "🚫" if user.get('is_blocked') else "✅"
         diamonds = user.get('diamonds', 0)
-        name = user.get('name', 'Unknown')
+        name = user.get('full_name', 'Unknown')
         user_id = user.get('tg_id')
         user_list_text += f"{i}. {status} {name} (ID: {user_id}) - 💎{diamonds}\n"
     
@@ -274,7 +274,7 @@ async def admin_user_detail(callback: CallbackQuery, db: Database, config: Confi
     text = friendly(
         f"👤 **User Details**\n\n"
         f"🆔 ID: {user_id}\n"
-        f"👤 Name: {user.get('name', 'Not set')}\n"
+        f"👤 Name: {user.get('full_name', 'Not set')}\n"
         f"📞 Phone: {user.get('phone', 'Not set')}\n"
         f"📍 Region: {user.get('region', 'Not set')}\n"
         f"💎 Balance: {user.get('diamonds', 0)} 💎\n"
