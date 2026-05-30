@@ -26,6 +26,8 @@
    - `WEBHOOK_PATH=/tg/webhook-secret`
 5. `WEBHOOK_BASE_URL` bo'sh qoldirilsa ham bo'ladi, Render avtomatik URL dan foydalaniladi.
 6. Start command: `uvicorn asgi_app:app --host 0.0.0.0 --port $PORT`
+7. Free Render service 15 daqiqa idle qolsa uyquga ketadi, shuning uchun repo ichida GitHub Actions keepalive workflow qo'shilgan: [`.github/workflows/keepalive.yml`](/home/ibrohim/ustatop/.github/workflows/keepalive.yml).
+8. GitHub repo’da Actions yoqilgan bo'lsin, workflow `main` ga tushgach avtomatik `/health` ga ping yuboradi.
 
 ## Admin panel
 - Admin sifatida kirish uchun `ADMIN_ID` yoki `ADMIN_USERNAME` ni sozlang.
@@ -92,3 +94,4 @@ Tezkor script:
 - `firebase_credentials.json` yoki `FIREBASE_CREDENTIALS_JSON` yangi project service account bilan yangilangan bo'lishi kerak.
 - Yangi foydalanuvchiga ro'yxatdan o'tganda 10 ta olmos beriladi.
  - Web panel HTTP Basic Auth bilan himoyalangan.
+ - Free Render instance idle bo'lsa uyquga ketishi mumkin; keepalive workflow bu muammoni ancha kamaytiradi.
