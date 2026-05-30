@@ -29,6 +29,28 @@
 7. Free Render service 15 daqiqa idle qolsa uyquga ketadi, shuning uchun repo ichida GitHub Actions keepalive workflow qo'shilgan: [`.github/workflows/keepalive.yml`](/home/ibrohim/ustatop/.github/workflows/keepalive.yml).
 8. GitHub repo’da Actions yoqilgan bo'lsin, workflow `main` ga tushgach avtomatik `/health` ga ping yuboradi.
 
+## alwaysdata deploy
+1. alwaysdata’da `Web > Sites > Add a site` ga kiring.
+2. `Type` sifatida `User program` tanlang.
+3. Command uchun mana buni qo'ying:
+   - `uvicorn asgi_app:app --host $IP --port $PORT`
+4. Working directory sifatida repo papkasini ko'rsating.
+5. Python version ni `3.12+` yoki mavjud eng yaqin versiyaga qo'ying.
+6. `.env` ichida kamida quyidagilar bo'lsin:
+   - `BOT_TOKEN`
+   - `DB_TYPE=firebase`
+   - `WEB_ENABLED=true`
+   - `WEBHOOK_ENABLED=true`
+   - `WEBHOOK_BASE_URL=https://<sizning-domainingiz>`
+   - `WEBHOOK_PATH=/tg/webhook-secret`
+   - `WEB_USER`
+   - `WEB_PASS`
+   - `FIREBASE_CREDENTIALS_FILE=/path/to/firebase_credentials.json`
+7. Firebase service account JSON’ni alohida fayl sifatida saqlang, `FIREBASE_CREDENTIALS_FILE` bilan ulang.
+8. Agar free plan’da bo‘lsangiz, `Advanced > Scheduled tasks` orqali vaqti-vaqti bilan `/health` ga `curl` yuborib turish mumkin.
+9. alwaysdata log’lari `Web > Sites` bo‘limidan ko‘rinadi.
+10. Keepalive uchun [`deploy/alwaysdata_keepalive.sh`](/home/ibrohim/ustatop/deploy/alwaysdata_keepalive.sh) skriptidan ham foydalanishingiz mumkin.
+
 ## Admin panel
 - Admin sifatida kirish uchun `ADMIN_ID` yoki `ADMIN_USERNAME` ni sozlang.
 - Admin buyruq: `/admin`.
