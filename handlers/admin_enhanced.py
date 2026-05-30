@@ -1,6 +1,7 @@
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.enums import ParseMode
@@ -29,24 +30,24 @@ router = Router()
 db = get_database()
 
 # Enhanced admin states
-class AdminUserManagement:
-    user_search = "admin:user_search"
-    user_details = "admin:user_details"
-    user_edit = "admin:user_edit"
+class AdminUserManagement(StatesGroup):
+    user_search = State()
+    user_details = State()
+    user_edit = State()
 
-class AdminAnalytics:
-    daily_stats = "admin:daily_stats"
-    weekly_stats = "admin:weekly_stats"
-    monthly_stats = "admin:monthly_stats"
+class AdminAnalytics(StatesGroup):
+    daily_stats = State()
+    weekly_stats = State()
+    monthly_stats = State()
 
-class AdminContent:
-    add_service = "admin:add_service"
-    edit_service = "admin:edit_service"
-    delete_service = "admin:delete_service"
+class AdminContent(StatesGroup):
+    add_service = State()
+    edit_service = State()
+    delete_service = State()
 
-class AdminNotifications:
-    scheduled_message = "admin:scheduled_message"
-    custom_broadcast = "admin:custom_broadcast"
+class AdminNotifications(StatesGroup):
+    scheduled_message = State()
+    custom_broadcast = State()
 
 # Enhanced admin keyboard
 def enhanced_admin_menu_kb() -> InlineKeyboardMarkup:
