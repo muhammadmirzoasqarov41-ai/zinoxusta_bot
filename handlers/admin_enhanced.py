@@ -9,7 +9,7 @@ import aiosqlite
 from datetime import datetime
 
 from config import Config
-from db import Database
+from db_factory import get_database
 from keyboards import admin_menu_kb, main_menu_kb
 from states import (
     AdminAddDiamonds,
@@ -26,6 +26,7 @@ import asyncio
 from datetime import datetime, timedelta
 
 router = Router()
+db = get_database()
 
 # Enhanced admin states
 class AdminUserManagement:
@@ -85,35 +86,23 @@ async def admin_users_menu(callback: CallbackQuery, config: Config):
     )
 
 @router.callback_query(lambda c: c.data == "admin:user_stats")
-async def admin_user_statistics(callback: CallbackQuery, db: Database, config: Config):
+async def admin_user_statistics(callback: CallbackQuery, config: Config):
     if not is_admin(callback.from_user, config.admin_id, config.admin_username):
         await callback.answer("❌ Access denied")
         return
     
     # Get user statistics
+    db = get_database()
     total_users = await db.get_total_users_count()
     
-    # Get detailed statistics
-    async with aiosqlite.connect(db.db_path) as conn:
-        await conn.execute("SELECT COUNT(*) as count FROM users WHERE is_blocked = 0")
-        active_users = (await conn.fetchone())['count']
-        
-        await conn.execute("SELECT COUNT(*) as count FROM users WHERE is_blocked = 1")
-        blocked_users = (await conn.fetchone())['count']
-        
-        await conn.execute("SELECT COUNT(*) as count FROM users WHERE diamonds > 0")
-        users_with_diamonds = (await conn.fetchone())['count']
-        
-        await conn.execute("SELECT COUNT(*) as count FROM users WHERE role = 'usta'")
-        masters_count = (await conn.fetchone())['count']
-        
-        await conn.execute("SELECT COUNT(*) as count FROM users WHERE role = 'mijoz'")
-        clients_count = (await conn.fetchone())['count']
-        
-        # Get today's new users
-        today = datetime.now().date()
-        await conn.execute("SELECT COUNT(*) as count FROM users WHERE DATE(created_at) = ?", (today,))
-        today_users = (await conn.fetchone())['count']
+    # Get detailed statistics using Firebase
+    active_users = await db.get_active_users_count()
+    blocked_users = await db.get_blocked_users_count()
+    users_with_diamonds = await db.get_users_with_diamonds_count()
+    masters_count = await db.get_masters_count()
+    clients_count = await db.get_clients_count()
+    # Get today's new users
+    today_users = await db.get_today_users_count()
     
     text = friendly(
         f"📊 **User Statistics**\n\n"
@@ -148,7 +137,7 @@ async def admin_user_search(callback: CallbackQuery, state: FSMContext, config: 
     )
 
 @router.message(AdminUserManagement.user_search)
-async def admin_search_user(message: Message, state: FSMContext, db: Database, config: Config):
+async def admin_search_user(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     
@@ -176,7 +165,7 @@ async def admin_search_user(message: Message, state: FSMContext, db: Database, c
     )
 
 @router.callback_query(lambda c: c.data == "admin:user_list")
-async def admin_user_list(callback: CallbackQuery, db: Database, config: Config):
+async def admin_user_list(callback: CallbackQuery, config: Config):
     if not is_admin(callback.from_user, config.admin_id, config.admin_username):
         await callback.answer("❌ Access denied")
         return
@@ -214,7 +203,7 @@ async def admin_user_list(callback: CallbackQuery, db: Database, config: Config)
     )
 
 @router.callback_query(lambda c: c.data.startswith("admin:user_list:"))
-async def admin_user_list_page(callback: CallbackQuery, db: Database, config: Config):
+async def admin_user_list_page(callback: CallbackQuery, config: Config):
     if not is_admin(callback.from_user, config.admin_id, config.admin_username):
         await callback.answer("❌ Access denied")
         return
@@ -256,7 +245,7 @@ async def admin_user_list_page(callback: CallbackQuery, db: Database, config: Co
     )
 
 @router.callback_query(lambda c: c.data.startswith("admin:user_detail:"))
-async def admin_user_detail(callback: CallbackQuery, db: Database, config: Config):
+async def admin_user_detail(callback: CallbackQuery, config: Config):
     if not is_admin(callback.from_user, config.admin_id, config.admin_username):
         await callback.answer("❌ Access denied")
         return
@@ -293,7 +282,7 @@ async def admin_user_detail(callback: CallbackQuery, db: Database, config: Confi
     builder.button(text="📝 Edit Profile", callback_data=f"admin:edit_user:{user_id}")
     builder.button(text="🚫 Block User", callback_data=f"admin:block_user:{user_id}")
     builder.button(text="📊 View Activity", callback_data=f"admin:user_activity:{user_id}")
-    builder.button(text("⬅️ Back", callback_data="admin:users"))
+    builder.button(text="⬅️ Back", callback_data="admin:users")
     builder.adjust(2)
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
@@ -322,7 +311,7 @@ async def admin_analytics_menu(callback: CallbackQuery, config: Config):
     )
 
 @router.callback_query(lambda c: c.data == "admin:daily_stats")
-async def admin_daily_stats(callback: CallbackQuery, db: Database, config: Config):
+async def admin_daily_stats(callback: CallbackQuery, config: Config):
     if not is_admin(callback.from_user, config.admin_id, config.admin_username):
         await callback.answer("❌ Access denied")
         return
@@ -349,7 +338,7 @@ async def admin_daily_stats(callback: CallbackQuery, db: Database, config: Confi
     
     builder = InlineKeyboardBuilder()
     builder.button(text="📊 View Chart", callback_data="admin:daily_chart")
-    builder.button(text("⬅️ Back", callback_data="admin:analytics"))
+    builder.button(text="⬅️ Back", callback_data="admin:analytics")
     builder.adjust(2)
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
@@ -377,7 +366,7 @@ async def admin_financial_menu(callback: CallbackQuery, config: Config):
     )
 
 @router.callback_query(lambda c: c.data == "admin:diamond_mgmt")
-async def admin_diamond_management(callback: CallbackQuery, db: Database, config: Config):
+async def admin_diamond_management(callback: CallbackQuery, config: Config):
     if not is_admin(callback.from_user, config.admin_id, config.admin_username):
         await callback.answer("❌ Access denied")
         return
@@ -405,7 +394,7 @@ async def admin_diamond_management(callback: CallbackQuery, db: Database, config
     builder.button(text="➖ Remove Diamonds", callback_data="admin:remove_diamonds_menu")
     builder.button(text="🎁 Give Bonus", callback_data="admin:give_bonus")
     builder.button(text="📊 Diamond Report", callback_data="admin:diamond_report")
-    builder.button(text("⬅️ Back", callback_data="admin:financial"))
+    builder.button(text="⬅️ Back", callback_data="admin:financial")
     builder.adjust(2)
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())

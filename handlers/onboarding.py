@@ -2,7 +2,7 @@ from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from db import Database
+from db_factory import get_database
 from aiogram import F
 from aiogram.types import CallbackQuery, ReplyKeyboardRemove
 
@@ -20,6 +20,7 @@ from states import Onboarding
 from utils import friendly
 
 router = Router()
+db = get_database()
 
 
 @router.message(Onboarding.full_name)
@@ -226,7 +227,7 @@ async def onboarding_photo(message: Message, state: FSMContext):
 
 
 @router.message(Onboarding.purpose)
-async def onboarding_purpose(message: Message, state: FSMContext, db: Database):
+async def onboarding_purpose(message: Message, state: FSMContext):
     purpose = (message.text or "").strip()
     if len(purpose) < 3:
         await message.answer(friendly("Iltimos, maqsadingizni qisqacha yozing."))

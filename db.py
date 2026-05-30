@@ -1,5 +1,6 @@
 import aiosqlite
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, List
 
 ISO_FMT = "%Y-%m-%dT%H:%M:%S"
@@ -10,6 +11,10 @@ class Database:
         self.db_path = db_path
 
     async def init(self) -> None:
+        db_file = Path(self.db_path)
+        if db_file.parent != Path("."):
+            db_file.parent.mkdir(parents=True, exist_ok=True)
+
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
@@ -272,15 +277,18 @@ class Database:
 
     async def stats(self) -> dict:
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("SELECT COUNT(*) as total_users FROM users")
-            total_users = (await db.fetchone())["total_users"]
-            
-            await db.execute("SELECT COALESCE(SUM(diamonds), 0) as total_balance FROM users")
-            total_balance = (await db.fetchone())["total_balance"]
-            
-            await db.execute("SELECT COALESCE(SUM(amount), 0) as total_spent FROM diamond_transactions WHERE amount < 0")
-            total_spent = abs((await db.fetchone())["total_spent"])
-            
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT COUNT(*) as total_users FROM users") as cur:
+                total_users = int((await cur.fetchone())["total_users"])
+
+            async with db.execute("SELECT COALESCE(SUM(diamonds), 0) as total_balance FROM users") as cur:
+                total_balance = int((await cur.fetchone())["total_balance"])
+
+            async with db.execute(
+                "SELECT COALESCE(SUM(amount), 0) as total_spent FROM transactions WHERE amount < 0"
+            ) as cur:
+                total_spent = abs(int((await cur.fetchone())["total_spent"]))
+
             return {"total_users": total_users, "total_balance": total_balance, "total_spent": total_spent}
     
     async def get_all_users(self, limit: int = 50, offset: int = 0) -> List[dict]:
@@ -298,9 +306,33 @@ class Database:
     async def get_total_users_count(self) -> int:
         """Get total count of users"""
         async with aiosqlite.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT COUNT(*) as count FROM users")
-            result = await cursor.fetchone()
-            return result["count"]
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT COUNT(*) as count FROM users") as cur:
+                result = await cur.fetchone()
+                return int(result["count"]) if result else 0
+
+    async def search_users(self, search_term: str) -> list[dict[str, Any]]:
+        term = search_term.strip()
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            if term.isdigit():
+                query = "SELECT * FROM users WHERE tg_id = ? ORDER BY id DESC"
+                params = (int(term),)
+            else:
+                like = f"%{term.lower()}%"
+                query = (
+                    "SELECT * FROM users WHERE "
+                    "lower(COALESCE(full_name, '')) LIKE ? OR "
+                    "lower(COALESCE(phone, '')) LIKE ? OR "
+                    "lower(COALESCE(region, '')) LIKE ? OR "
+                    "lower(COALESCE(role, '')) LIKE ? OR "
+                    "lower(COALESCE(profession, '')) LIKE ? "
+                    "ORDER BY id DESC"
+                )
+                params = (like, like, like, like, like)
+            async with db.execute(query, params) as cur:
+                rows = await cur.fetchall()
+                return [dict(row) for row in rows]
 
     async def list_masters_by_profession(self, profession: str, limit: int = 10, offset: int = 0) -> list[dict[str, Any]]:
         now = datetime.utcnow().strftime(ISO_FMT)
@@ -318,6 +350,178 @@ class Database:
             async with db.execute(query, (now, now, profession, limit, offset)) as cur:
                 rows = await cur.fetchall()
                 return [dict(r) for r in rows]
+
+    async def get_active_users_count(self) -> int:
+        cutoff = (datetime.utcnow() - timedelta(days=7)).strftime(ISO_FMT)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT COUNT(*) AS count FROM users WHERE last_seen IS NOT NULL AND last_seen >= ?",
+                (cutoff,),
+            ) as cur:
+                row = await cur.fetchone()
+                return int(row["count"]) if row else 0
+
+    async def get_blocked_users_count(self) -> int:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT COUNT(*) AS count FROM users WHERE is_blocked = 1") as cur:
+                row = await cur.fetchone()
+                return int(row["count"]) if row else 0
+
+    async def get_users_with_diamonds_count(self) -> int:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT COUNT(*) AS count FROM users WHERE diamonds > 0") as cur:
+                row = await cur.fetchone()
+                return int(row["count"]) if row else 0
+
+    async def get_masters_count(self) -> int:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT COUNT(*) AS count FROM users WHERE role = 'usta'") as cur:
+                row = await cur.fetchone()
+                return int(row["count"]) if row else 0
+
+    async def get_clients_count(self) -> int:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT COUNT(*) AS count FROM users WHERE COALESCE(role, '') != 'usta'") as cur:
+                row = await cur.fetchone()
+                return int(row["count"]) if row else 0
+
+    async def get_today_users_count(self) -> int:
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT COUNT(*) AS count FROM users WHERE substr(created_at, 1, 10) = ?",
+                (today,),
+            ) as cur:
+                row = await cur.fetchone()
+                return int(row["count"]) if row else 0
+
+    async def get_user_stats(self, user_id: int) -> dict[str, int]:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT COUNT(*) AS searches FROM orders WHERE from_tg_id = ?",
+                (user_id,),
+            ) as cur:
+                searches = int((await cur.fetchone())["searches"])
+            async with db.execute(
+                "SELECT COUNT(*) AS chats FROM chat_sessions WHERE user_a = ? OR user_b = ?",
+                (user_id, user_id),
+            ) as cur:
+                chats = int((await cur.fetchone())["chats"])
+            async with db.execute(
+                "SELECT COUNT(*) AS reviews FROM ratings WHERE master_tg_id = ? OR from_tg_id = ?",
+                (user_id, user_id),
+            ) as cur:
+                reviews = int((await cur.fetchone())["reviews"])
+            async with db.execute(
+                "SELECT COALESCE(ABS(SUM(amount)), 0) AS spent FROM transactions WHERE tg_id = ? AND amount < 0",
+                (user_id,),
+            ) as cur:
+                spent = int((await cur.fetchone())["spent"])
+            return {"searches": searches, "chats": chats, "reviews": reviews, "spent": spent}
+
+    async def get_daily_stats(self, day: Any) -> dict[str, int]:
+        day_str = str(day)[:10]
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT COUNT(*) AS new_users FROM users WHERE substr(created_at, 1, 10) = ?",
+                (day_str,),
+            ) as cur:
+                new_users = int((await cur.fetchone())["new_users"])
+            async with db.execute(
+                "SELECT COUNT(*) AS searches FROM orders WHERE substr(created_at, 1, 10) = ?",
+                (day_str,),
+            ) as cur:
+                searches = int((await cur.fetchone())["searches"])
+            async with db.execute(
+                "SELECT COUNT(*) AS active_chats FROM chat_sessions WHERE is_active = 1",
+            ) as cur:
+                active_chats = int((await cur.fetchone())["active_chats"])
+            async with db.execute(
+                "SELECT COALESCE(ABS(SUM(amount)), 0) AS diamonds_spent FROM transactions WHERE amount < 0 AND substr(created_at, 1, 10) = ?",
+                (day_str,),
+            ) as cur:
+                diamonds_spent = int((await cur.fetchone())["diamonds_spent"])
+            async with db.execute(
+                "SELECT COUNT(*) AS reviews FROM ratings WHERE substr(created_at, 1, 10) = ?",
+                (day_str,),
+            ) as cur:
+                reviews = int((await cur.fetchone())["reviews"])
+            async with db.execute(
+                "SELECT COUNT(*) AS blocked_users FROM users WHERE is_blocked = 1",
+            ) as cur:
+                blocked_users = int((await cur.fetchone())["blocked_users"])
+
+            return {
+                "new_users": new_users,
+                "searches": searches,
+                "active_chats": active_chats,
+                "diamonds_spent": diamonds_spent,
+                "revenue": diamonds_spent,
+                "reviews": reviews,
+                "blocked_users": blocked_users,
+                "morning_activity": 0,
+                "afternoon_activity": 0,
+                "evening_activity": 0,
+                "night_activity": 0,
+            }
+
+    async def get_diamond_stats(self) -> dict[str, int | float]:
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT diamonds FROM users ORDER BY diamonds DESC") as cur:
+                balances = [int(row["diamonds"] or 0) for row in await cur.fetchall()]
+            total_users = len(balances)
+            total_diamonds = sum(balances)
+            users_with_diamonds = sum(1 for value in balances if value > 0)
+
+            async with db.execute(
+                "SELECT COALESCE(ABS(SUM(amount)), 0) AS spent_today FROM transactions WHERE amount < 0 AND substr(created_at, 1, 10) = ?",
+                (datetime.utcnow().strftime("%Y-%m-%d"),),
+            ) as cur:
+                spent_today = int((await cur.fetchone())["spent_today"])
+
+            async with db.execute(
+                "SELECT COALESCE(ABS(SUM(amount)), 0) AS spent_week FROM transactions WHERE amount < 0 AND created_at >= ?",
+                ((datetime.utcnow() - timedelta(days=7)).strftime(ISO_FMT),),
+            ) as cur:
+                spent_week = int((await cur.fetchone())["spent_week"])
+
+            async with db.execute(
+                "SELECT COALESCE(ABS(SUM(amount)), 0) AS spent_month FROM transactions WHERE amount < 0 AND created_at >= ?",
+                ((datetime.utcnow() - timedelta(days=30)).strftime(ISO_FMT),),
+            ) as cur:
+                spent_month = int((await cur.fetchone())["spent_month"])
+
+            async with db.execute(
+                "SELECT COALESCE(SUM(amount), 0) AS bonus_given FROM transactions WHERE amount > 0",
+            ) as cur:
+                bonus_given = int((await cur.fetchone())["bonus_given"])
+
+            avg_balance = (total_diamonds / total_users) if total_users else 0
+            top_10_percent = int(total_users * 0.1)
+            top_25_percent = int(total_users * 0.25)
+            top_50_percent = int(total_users * 0.5)
+
+            return {
+                "total_diamonds": total_diamonds,
+                "users_with_diamonds": users_with_diamonds,
+                "spent_today": spent_today,
+                "spent_week": spent_week,
+                "spent_month": spent_month,
+                "bonus_given": bonus_given,
+                "avg_balance": avg_balance,
+                "top_10_percent": top_10_percent,
+                "top_25_percent": top_25_percent,
+                "top_50_percent": top_50_percent,
+            }
 
     async def add_rating(self, master_tg_id: int, from_tg_id: int, rating: int, comment: str | None) -> None:
         async with aiosqlite.connect(self.db_path) as db:

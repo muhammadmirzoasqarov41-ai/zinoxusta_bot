@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
 
-from db import Database
+from db_factory import get_database
 from keyboards import main_menu_kb, ai_chat_kb
 from utils import friendly
 from ai_agent import get_ai_agent

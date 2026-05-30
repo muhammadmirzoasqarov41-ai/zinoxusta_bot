@@ -12,6 +12,21 @@
 - Start command sifatida `python main.py` yoki `Procfile` foydalaning.
  - Web panel uchun `WEB_ENABLED=true`, `WEB_USER`, `WEB_PASS`, `WEB_PORT` qiymatlarini kiriting (default: o'chirilgan).
 
+## Render deploy
+1. Render’da yangi `Web Service` yarating va `render.yaml` ni bog'lang yoki manual sozlang.
+2. Env larni kiriting:
+   - `BOT_TOKEN`
+   - `ADMIN_ID` va `ADMIN_USERNAME` ixtiyoriy
+   - `WEB_USER` va `WEB_PASS`
+   - `FIREBASE_CREDENTIALS_JSON` ga yangi Firebase service account JSON ni qo'ying
+3. Firebase’da Firestore database yaratilgan bo'lsin.
+4. Telegram webhook uchun quyidagilar yoqilgan bo'lsin:
+   - `WEB_ENABLED=true`
+   - `WEBHOOK_ENABLED=true`
+   - `WEBHOOK_PATH=/tg/webhook-secret`
+5. `WEBHOOK_BASE_URL` bo'sh qoldirilsa ham bo'ladi, Render avtomatik URL dan foydalaniladi.
+6. Start command: `uvicorn asgi_app:app --host 0.0.0.0 --port $PORT`
+
 ## Admin panel
 - Admin sifatida kirish uchun `ADMIN_ID` yoki `ADMIN_USERNAME` ni sozlang.
 - Admin buyruq: `/admin`.
@@ -73,6 +88,7 @@ Tezkor script:
 - (EU bo'lsa) oldindan: `export PA_DOMAIN="<username>.eu.pythonanywhere.com"`
 
 ## Eslatma
-- Ma'lumotlar bazasi `SQLite` (`DB_PATH`) orqali saqlanadi.
+- Ma'lumotlar bazasi `Firebase Firestore` orqali saqlanadi.
+- `firebase_credentials.json` yoki `FIREBASE_CREDENTIALS_JSON` yangi project service account bilan yangilangan bo'lishi kerak.
 - Yangi foydalanuvchiga ro'yxatdan o'tganda 10 ta olmos beriladi.
  - Web panel HTTP Basic Auth bilan himoyalangan.

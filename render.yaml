@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: ustaqidir-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn asgi_app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: DB_TYPE
+        value: firebase
+      - key: WEB_ENABLED
+        value: "true"
+      - key: WEBHOOK_ENABLED
+        value: "true"
+      - key: WEBHOOK_PATH
+        value: /tg/webhook-secret
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false
+      - key: WEB_USER
+        sync: false
+      - key: WEB_PASS
+        sync: false

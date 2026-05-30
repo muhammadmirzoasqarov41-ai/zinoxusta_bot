@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from db import Database
+from db_factory import get_database
 from keyboards import main_menu_kb
 from states import Onboarding
 from utils import friendly
@@ -18,7 +18,8 @@ WELCOME_TEXT = (
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, state: FSMContext, db: Database, command: CommandObject):
+async def cmd_start(message: Message, state: FSMContext, command: CommandObject):
+    db = get_database()
     user = await db.get_user(message.from_user.id)
     if user:
         if user.get("is_blocked") == 1:

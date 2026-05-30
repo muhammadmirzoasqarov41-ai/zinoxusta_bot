@@ -4,12 +4,13 @@ from aiogram import Bot, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from db import Database, ISO_FMT
+from db_factory import get_database
 from keyboards import main_menu_kb, usta_services_kb, edit_profile_kb, urgent_confirm_kb
 from utils import friendly
 from states import ProfileEdit, RateMaster, SearchProfession, SearchRegion
 
 router = Router()
+db = get_database()
 
 BUY_DIAMONDS_TEXT = (
     "Hurmatli mijoz, hisobingizni to'ldirish va 💎 Olmoslar xarid qilish uchun "
@@ -28,8 +29,8 @@ async def buy_diamonds(message: Message):
 
 
 @router.message(lambda m: m.text == "💎 Olmos balansim")
-async def balance(message: Message, db: Database):
-    user = await db.get_user(message.from_user.id)
+async def balance(message: Message):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
@@ -42,8 +43,8 @@ async def balance(message: Message, db: Database):
 
 
 @router.message(lambda m: m.text == "🧑‍🔧 Ustalar ro'yxati")
-async def masters_list(message: Message, db: Database):
-    user = await db.get_user(message.from_user.id)
+async def masters_list(message: Message):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
@@ -52,12 +53,12 @@ async def masters_list(message: Message, db: Database):
             friendly("Kechirasiz, akkauntingiz vaqtincha bloklangan. Admin bilan bog'laning.")
         )
         return
-    masters = await db.list_masters(limit=2, offset=0)
+    masters = await get_database().list_masters(limit=2, offset=0)
     if not masters:
         await message.answer(friendly("Hozircha ustalar ro'yxati bo'sh. Keyinroq urinib ko'ring."))
         return
     await message.answer(friendly("Quyida ustalar ro'yxati taqdim etiladi:"))
-    now = datetime.utcnow().strftime(ISO_FMT)
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     master = masters[0]
     is_top = master.get("top_until") and master["top_until"] > now
     is_vip = master.get("vip_until") and master["vip_until"] > now
@@ -88,8 +89,8 @@ async def masters_list(message: Message, db: Database):
 
 
 @router.message(lambda m: m.text == "🚨 Shoshilinch chaqiruv")
-async def urgent_call(message: Message, db: Database, bot: Bot):
-    user = await db.get_user(message.from_user.id)
+async def urgent_call(message: Message, bot: Bot):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
@@ -113,8 +114,8 @@ async def urgent_call(message: Message, db: Database, bot: Bot):
 
 
 @router.message(lambda m: m.text == "🛠 Usta xizmatlari")
-async def usta_services_menu(message: Message, db: Database):
-    user = await db.get_user(message.from_user.id)
+async def usta_services_menu(message: Message):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
@@ -136,8 +137,8 @@ async def usta_services_menu(message: Message, db: Database):
 
 
 @router.message(lambda m: m.text == "⭐️ TOP ga chiqish (50💎)")
-async def buy_top(message: Message, db: Database):
-    user = await db.get_user(message.from_user.id)
+async def buy_top(message: Message):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
@@ -160,8 +161,8 @@ async def buy_top(message: Message, db: Database):
 
 
 @router.message(lambda m: m.text == "👑 VIP maqomi (100💎)")
-async def buy_vip(message: Message, db: Database):
-    user = await db.get_user(message.from_user.id)
+async def buy_vip(message: Message):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
@@ -211,8 +212,8 @@ async def about_bot(message: Message):
 
 
 @router.message(lambda m: m.text == "✏️ Profilni tahrirlash")
-async def edit_profile_start(message: Message, state: FSMContext, db: Database):
-    user = await db.get_user(message.from_user.id)
+async def edit_profile_start(message: Message, state: FSMContext):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
@@ -247,7 +248,7 @@ async def edit_profile_field(message: Message, state: FSMContext):
 
 
 @router.message(ProfileEdit.value)
-async def edit_profile_value(message: Message, state: FSMContext, db: Database):
+async def edit_profile_value(message: Message, state: FSMContext):
     data = await state.get_data()
     field = data.get("field")
     if field == "photo_id":
@@ -276,19 +277,19 @@ async def search_master_start(message: Message, state: FSMContext):
 
 
 @router.message(SearchProfession.profession)
-async def search_by_profession(message: Message, state: FSMContext, db: Database):
+async def search_by_profession(message: Message, state: FSMContext):
     profession = (message.text or "").strip()
     if len(profession) < 2:
         await message.answer(friendly("Iltimos, kasbni aniqroq yozing."))
         return
-    masters = await db.list_masters_by_profession(profession, limit=2, offset=0)
+    masters = await get_database().list_masters_by_profession(profession, limit=2, offset=0)
     if not masters:
         await message.answer(friendly("Bu kasb bo'yicha usta topilmadi."))
         await state.clear()
         return
     await state.update_data(last_profession=profession)
     await state.clear()
-    now = datetime.utcnow().strftime(ISO_FMT)
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     master = masters[0]
     is_top = master.get("top_until") and master["top_until"] > now
     is_vip = master.get("vip_until") and master["vip_until"] > now
@@ -347,7 +348,7 @@ async def rate_master_rating(message: Message, state: FSMContext):
 
 
 @router.message(RateMaster.comment)
-async def rate_master_comment(message: Message, state: FSMContext, db: Database):
+async def rate_master_comment(message: Message, state: FSMContext):
     data = await state.get_data()
     master_id = data.get("master_id")
     rating = data.get("rating")
@@ -360,8 +361,8 @@ async def rate_master_comment(message: Message, state: FSMContext, db: Database)
 
 
 @router.message(lambda m: m.text == "📜 Tarixim")
-async def my_history(message: Message, db: Database):
-    orders = await db.list_orders_for_user(message.from_user.id, limit=10)
+async def my_history(message: Message):
+    orders = await get_database().list_orders_for_user(message.from_user.id, limit=10)
     if not orders:
         await message.answer(friendly("Hozircha tarix bo'sh."))
         return
@@ -372,8 +373,8 @@ async def my_history(message: Message, db: Database):
 
 
 @router.message(lambda m: m.text == "📥 So'rovlar")
-async def my_requests(message: Message, db: Database):
-    user = await db.get_user(message.from_user.id)
+async def my_requests(message: Message):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return
@@ -391,8 +392,8 @@ async def my_requests(message: Message, db: Database):
 
 
 @router.message(lambda m: m.text == "🎁 Olmos ishlash")
-async def referral_info(message: Message, db: Database):
-    user = await db.get_user(message.from_user.id)
+async def referral_info(message: Message):
+    user = await get_database().get_user(message.from_user.id)
     if not user:
         await message.answer(friendly("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting."))
         return

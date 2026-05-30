@@ -3,15 +3,17 @@ from aiogram.types import CallbackQuery
 
 from datetime import datetime
 
-from db import Database, ISO_FMT
+from db_factory import get_database
 from utils import friendly
 from keyboards import master_card_nav_kb, chat_start_kb
 
 router = Router()
+db = get_database()
+ISO_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("open_contact:"))
-async def open_contact(callback: CallbackQuery, db: Database):
+async def open_contact(callback: CallbackQuery):
     if not callback.data:
         return
     parts = callback.data.split(":", 1)
@@ -20,6 +22,7 @@ async def open_contact(callback: CallbackQuery, db: Database):
         return
 
     target_tg_id = int(parts[1])
+    db = get_database()
     user = await db.get_user(callback.from_user.id)
     if not user:
         await callback.answer(
@@ -61,7 +64,7 @@ async def open_contact(callback: CallbackQuery, db: Database):
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("masters_page:"))
-async def masters_page(callback: CallbackQuery, db: Database):
+async def masters_page(callback: CallbackQuery):
     if not callback.data:
         return
     offset_raw = callback.data.split(":", 1)[1]
@@ -119,7 +122,7 @@ async def urgent_cancel(callback: CallbackQuery):
 
 
 @router.callback_query(lambda c: c.data == "urgent_confirm")
-async def urgent_confirm(callback: CallbackQuery, db: Database):
+async def urgent_confirm(callback: CallbackQuery):
     user = await db.get_user(callback.from_user.id)
     if not user:
         await callback.answer("Iltimos, avval /start buyrug'i orqali ro'yxatdan o'ting. 😊", show_alert=True)
@@ -176,7 +179,7 @@ async def urgent_confirm(callback: CallbackQuery, db: Database):
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("start_chat:"))
-async def start_chat(callback: CallbackQuery, db: Database):
+async def start_chat(callback: CallbackQuery):
     if not callback.data:
         return
     target_raw = callback.data.split(":", 1)[1]

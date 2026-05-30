@@ -9,8 +9,8 @@ from aiogram.enums import ParseMode
 from aiogram.types import Update
 
 from config import load_config
-from db import Database
-from handlers import admin, callbacks, chat, menu, onboarding, start
+from db_factory import get_database
+from handlers import admin, admin_enhanced, ai_chat, callbacks, chat, menu, onboarding, start
 from middleware import LastSeenMiddleware
 from webapp import build_app
 
@@ -25,7 +25,10 @@ def _build_dispatcher() -> Dispatcher:
     dp.include_router(menu.router)
     dp.include_router(callbacks.router)
     dp.include_router(admin.router)
+    dp.include_router(admin_enhanced.router)
     dp.include_router(chat.router)
+    # AI chat router should be last to catch remaining messages
+    dp.include_router(ai_chat.router)
     return dp
 
 
@@ -38,7 +41,7 @@ def create_app() -> FastAPI:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = _build_dispatcher()
-    db = Database(config.db_path)
+    db = get_database()
 
     app = build_app(db, config, bot) if config.web_enabled else FastAPI(title="USTA QIDIR")
 

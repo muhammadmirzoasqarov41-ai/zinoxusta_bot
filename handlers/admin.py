@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from config import Config
-from db import Database
+from db_factory import get_database
 from keyboards import admin_menu_kb, main_menu_kb
 from states import (
     AdminAddDiamonds,
@@ -19,6 +19,7 @@ from states import (
 from utils import friendly, is_admin
 
 router = Router()
+db = get_database()
 
 
 @router.message(Command("admin"))
@@ -50,7 +51,7 @@ async def admin_add_user_id(message: Message, state: FSMContext, config: Config)
 
 
 @router.message(AdminAddDiamonds.amount)
-async def admin_add_amount(message: Message, state: FSMContext, db: Database, config: Config):
+async def admin_add_amount(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     if not (message.text or "").isdigit():
@@ -95,7 +96,7 @@ async def admin_remove_user_id(message: Message, state: FSMContext, config: Conf
 
 
 @router.message(AdminRemoveDiamonds.amount)
-async def admin_remove_amount(message: Message, state: FSMContext, db: Database, config: Config):
+async def admin_remove_amount(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     if not (message.text or "").isdigit():
@@ -121,7 +122,7 @@ async def admin_broadcast_start(message: Message, state: FSMContext, config: Con
 
 
 @router.message(AdminBroadcast.message)
-async def admin_broadcast_send(message: Message, state: FSMContext, db: Database, config: Config):
+async def admin_broadcast_send(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     text = message.text or ""
@@ -153,7 +154,7 @@ async def admin_ad_start(message: Message, state: FSMContext, config: Config):
 
 
 @router.message(AdminAdBroadcast.message)
-async def admin_ad_send(message: Message, state: FSMContext, db: Database, config: Config):
+async def admin_ad_send(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     await state.clear()
@@ -215,7 +216,7 @@ async def admin_block_start(message: Message, state: FSMContext, config: Config)
 
 
 @router.message(AdminBlockUser.user_id)
-async def admin_block_user(message: Message, state: FSMContext, db: Database, config: Config):
+async def admin_block_user(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     if not (message.text or "").isdigit():
@@ -236,7 +237,7 @@ async def admin_unblock_start(message: Message, state: FSMContext, config: Confi
 
 
 @router.message(AdminUnblockUser.user_id)
-async def admin_unblock_user(message: Message, state: FSMContext, db: Database, config: Config):
+async def admin_unblock_user(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     if not (message.text or "").isdigit():
@@ -257,7 +258,7 @@ async def admin_give_all_start(message: Message, state: FSMContext, config: Conf
 
 
 @router.message(AdminGiveAllDiamonds.amount)
-async def admin_give_all_send(message: Message, state: FSMContext, db: Database, config: Config):
+async def admin_give_all_send(message: Message, state: FSMContext, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     if not (message.text or "").isdigit():
@@ -288,23 +289,50 @@ async def admin_give_all_send(message: Message, state: FSMContext, db: Database,
     )
 
 
-@router.message(lambda m: m.text == "📊 Statistika")
-async def admin_stats(message: Message, db: Database, config: Config):
+@router.message(lambda m: m.text == "👥 Foydalanuvchilar ro'yxati")
+async def admin_user_list(message: Message, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
+    
+    db = get_database()
+    users = await db.get_all_users(limit=20)
+    
+    if not users:
+        await message.answer(friendly("Hozircha foydalanuvchilar yo'q."))
+        return
+    
+    text = "👥 **Foydalanuvchilar Ro'yxati**\n\n"
+    for user in users:
+        status = "🟢" if not user.get("is_blocked") else "🔴"
+        role = "🔧" if user.get("role") == "usta" else "👤"
+        diamonds = user.get("diamonds", 0)
+        text += f"{status} {role} {user.get('full_name', 'Noma\'lum')} (ID: {user.get('tg_id')}) - 💎{diamonds}\n"
+    
+    text += f"\n\n📊 Jami: {len(users)} ta foydalanuvchi"
+    await message.answer(friendly(text), reply_markup=admin_menu_kb())
+
+
+@router.message(lambda m: m.text == "📊 Statistika")
+async def admin_stats(message: Message, config: Config):
+    if not is_admin(message.from_user, config.admin_id, config.admin_username):
+        return
+    
+    db = get_database()
     stats = await db.stats()
-    await message.answer(
-        friendly(
-            "Baza statistikasi:\n"
-            f"Foydalanuvchilar: {stats['total_users']}\n"
-            f"Umumiy sarflangan olmos: {stats['total_spent']}\n"
-            f"Umumiy balans: {stats['total_balance']}"
-        )
+    text = (
+        f"📊 **Bot Statistikasi**\n\n"
+        f"👥 Jami foydalanuvchilar: {stats.get('total_users', 0)}\n"
+        f"🔧 Ustalar: {stats.get('masters', 0)}\n"
+        f"🙋‍♂️ Mijozlar: {stats.get('clients', 0)}\n"
+        f"🚫 Bloklanganlar: {stats.get('blocked', 0)}\n"
+        f"💎 Umumiy olmoslar: {stats.get('total_diamonds', 0)}\n\n"
+        f"📅 Bugun qo'shilgan: {stats.get('today_users', 0)}\n"
     )
+    await message.answer(friendly(text), reply_markup=admin_menu_kb())
 
 
 @router.message(lambda m: m.text == "🆓 Botni tekin qilish")
-async def set_free_mode(message: Message, db: Database, config: Config):
+async def set_free_mode(message: Message, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     await db.set_setting("paid_mode", "false")
@@ -312,7 +340,7 @@ async def set_free_mode(message: Message, db: Database, config: Config):
 
 
 @router.message(lambda m: m.text == "💰 Botni pullik qilish")
-async def set_paid_mode(message: Message, db: Database, config: Config):
+async def set_paid_mode(message: Message, config: Config):
     if not is_admin(message.from_user, config.admin_id, config.admin_username):
         return
     await db.set_setting("paid_mode", "true")

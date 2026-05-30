@@ -51,12 +51,15 @@ def load_config() -> Config:
     web_user = os.getenv("WEB_USER", "admin").strip()
     web_pass = os.getenv("WEB_PASS", "admin").strip()
     web_host = os.getenv("WEB_HOST", "0.0.0.0").strip()
-    web_port_raw = os.getenv("WEB_PORT", "8000").strip()
+    web_port_raw = os.getenv("WEB_PORT", os.getenv("PORT", "8000")).strip()
     web_port = int(web_port_raw) if web_port_raw.isdigit() else 8000
     web_enabled = os.getenv("WEB_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 
     webhook_enabled = os.getenv("WEBHOOK_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
-    webhook_base_url = os.getenv("WEBHOOK_BASE_URL", "").strip().rstrip("/")
+    webhook_base_url = os.getenv(
+        "WEBHOOK_BASE_URL",
+        os.getenv("RENDER_EXTERNAL_URL", ""),
+    ).strip().rstrip("/")
     webhook_path = os.getenv("WEBHOOK_PATH", "").strip()
     if webhook_enabled:
         if not webhook_base_url:
