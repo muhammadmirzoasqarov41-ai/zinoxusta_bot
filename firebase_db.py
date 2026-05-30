@@ -372,6 +372,17 @@ class FirebaseDB:
         users = self._sort_users(await self._all_users())
         return users[offset : offset + limit]
 
+    async def list_users(self, limit: int = 200, offset: int = 0) -> List[dict]:
+        """Compatibility alias used by the admin web panel."""
+        users = await self.get_all_users(limit=limit, offset=offset)
+        return [
+            {
+                **user,
+                "id": user.get("id", user.get("tg_id")),
+            }
+            for user in users
+        ]
+
     async def get_total_users_count(self) -> int:
         return len(await self._all_users())
 
